@@ -3,16 +3,23 @@
   "displayName": "DevStarter",
   "description": "",
   "version": "0.0.1",
+
+  "packageManager": "pnpm@10",
+
   "engines": {
     "vscode": "^1.105.0"
   },
+
   "categories": [
     "Other"
   ],
+
   "activationEvents": [
     "onCommand:devstarter.StartProyect"
   ],
+
   "main": "./dist/extension.js",
+
   "contributes": {
     "commands": [
       {
@@ -21,21 +28,35 @@
       }
     ]
   },
+
   "license": "LICENSE.txt",
+
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "npm run check-types && npm run lint && node esbuild.js",
-    "watch": "npm-run-all -p watch:*",
+    "vscode:prepublish": "pnpm package",
+
+    "compile": "pnpm check-types && pnpm lint && node esbuild.js",
+
+    "watch": "pnpm --parallel watch:esbuild watch:tsc",
+
     "watch:esbuild": "node esbuild.js --watch",
+
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+
+    "package": "pnpm check-types && pnpm lint && node esbuild.js --production",
+
     "compile-tests": "tsc -p . --outDir out",
+
     "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+
+    "pretest": "pnpm compile-tests && pnpm compile && pnpm lint",
+
     "check-types": "tsc --noEmit",
+
     "lint": "eslint src",
+
     "test": "vscode-test"
   },
+
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
     "@types/mocha": "^10.0.10",
@@ -45,10 +66,10 @@
     "@vscode/test-electron": "^2.5.2",
     "esbuild": "^0.27.0",
     "eslint": "^9.39.1",
-    "npm-run-all": "^4.1.5",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.3"
   },
+
   "dependencies": {
     "inquirer": "^13.0.1"
   }
