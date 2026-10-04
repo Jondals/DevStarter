@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: lts/*
           cache: pnpm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
       - run: git config --global user.name "DevStarter CI" && git config --global user.email "ci@example.com"
