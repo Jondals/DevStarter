@@ -1,76 +1,268 @@
 {
   "name": "devstarter",
   "displayName": "DevStarter",
-  "description": "",
-  "version": "0.0.1",
-
-  "packageManager": "pnpm@10",
-
+  "description": "Start any project in a few clicks, even if you have never programmed: pick an idea (3D website, game, blog, app…) or a stack (React, Next.js, Express, FastAPI, Laravel…). Adds databases, 54 libraries with live demos, Docker and CI, installs and updates your tools, and keeps your project libraries up to date.",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1b4b",
+    "theme": "dark"
+  },
+  "version": "1.0.0",
+  "publisher": "Jondals",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jondals/DevStarter"},
+  "packageManager": "pnpm@11.22.0",
   "engines": {
     "vscode": "^1.105.0"
   },
-
   "categories": [
-    "Other"
+    "Other",
+    "Education"
   ],
-
+  "keywords": [
+    "scaffold",
+    "starter",
+    "template",
+    "beginner",
+    "fullstack",
+    "react",
+    "nextjs",
+    "vite",
+    "tailwind",
+    "express",
+    "fastapi",
+    "laravel",
+    "database",
+    "docker",
+    "threejs",
+    "gsap",
+    "creative-coding",
+    "no-experience"
+  ],
   "activationEvents": [
-    "onCommand:devstarter.StartProyect"
+    "onStartupFinished"
   ],
-
   "main": "./dist/extension.js",
-
   "contributes": {
     "commands": [
       {
-        "command": "devstarter.StartProyect",
-        "title": "Start Proyect"
+        "command": "devstarter.newProject",
+        "title": "New Project",
+        "category": "DevStarter",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "devstarter.checkTools",
+        "title": "Check & Update My Tools",
+        "category": "DevStarter",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "devstarter.updateProject",
+        "title": "Update Project Libraries",
+        "category": "DevStarter",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "devstarter.recentProjects",
+        "title": "Recent Projects",
+        "category": "DevStarter",
+        "icon": "$(history)"
+      },
+      {
+        "command": "devstarter.openGuide",
+        "title": "Open Getting Started Guide",
+        "category": "DevStarter",
+        "icon": "$(book)"
+      },
+      {
+        "command": "devstarter.changeExperience",
+        "title": "Change Experience Level",
+        "category": "DevStarter",
+        "icon": "$(account)"
+      },
+      {
+        "command": "devstarter.help",
+        "title": "Help",
+        "category": "DevStarter",
+        "icon": "$(question)"
+      }
+    ],
+    "configuration": {
+      "title": "DevStarter",
+      "properties": {
+        "devstarter.experienceLevel": {
+          "type": "string",
+          "enum": [
+            "",
+            "beginner",
+            "experienced"
+          ],
+          "enumDescriptions": [
+            "Ask the first time",
+            "More explanations, welcome pages and a GETTING_STARTED guide",
+            "Compact wizard, commands shown as they run"
+          ],
+          "default": "",
+          "description": "How DevStarter talks to you. Leave empty to be asked the first time."
+        },
+        "devstarter.defaultPackageManager": {
+          "type": "string",
+          "enum": [
+            "npm",
+            "pnpm",
+            "bun"
+          ],
+          "default": "npm",
+          "description": "Package manager selected by default for JavaScript projects."
+        },
+        "devstarter.initGit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Create a Git repository with a first commit by default."
+        },
+        "devstarter.showLiveLogs": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the full output of every command while the project is being created (press 'v' in the DevStarter terminal to toggle)."
+        },
+        "devstarter.startDevServerOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start the development server automatically when a newly created project is opened."
+        },
+        "devstarter.showStatusBarButton": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the \"New Project\" button in the status bar."
+        },
+        "devstarter.openBrowser": {
+          "type": "string",
+          "enum": [
+            "outside",
+            "inside",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Open the app in your default browser",
+            "Open the app inside VS Code (Simple Browser)",
+            "Do not open anything"
+          ],
+          "default": "outside",
+          "description": "When the dev server is ready, open the app automatically."
+        },
+        "devstarter.scaffolderVersions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "Pin the version of a project generator if the latest one breaks, e.g. `{ \"@angular/cli\": \"21\", \"create-vite\": \"7\" }`. Generators not listed use `latest`."
+        },
+        "devstarter.afterCreate": {
+          "type": "string",
+          "enum": [
+            "open",
+            "ask",
+            "none"
+          ],
+          "enumDescriptions": [
+            "Open the project and start the frontend and backend servers automatically (a new window if a folder is already open)",
+            "Show a message with buttons",
+            "Do nothing"
+          ],
+          "default": "open",
+          "description": "What to do when the project is ready."
+        }
+      }
+    },
+    "viewsWelcome": [
+      {
+        "view": "explorer",
+        "contents": "New to coding? Create a ready-to-run project in a few clicks.\n[$(sparkle) New Project with DevStarter](command:devstarter.newProject)\n[$(tools) Check & update my tools](command:devstarter.checkTools)",
+        "when": "workspaceFolderCount == 0"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "devstarter.welcome",
+        "title": "Start your first project with DevStarter",
+        "description": "From zero to a running app in a couple of minutes.",
+        "steps": [
+          {
+            "id": "tools",
+            "title": "Check your tools",
+            "description": "See what is installed on your computer. DevStarter can install Node.js, Git, Python and more for you.\n[$(tools) Check my tools](command:devstarter.checkTools)",
+            "media": {
+              "markdown": "media/walkthrough/tools.md"
+            },
+            "completionEvents": [
+              "onCommand:devstarter.checkTools"
+            ]
+          },
+          {
+            "id": "create",
+            "title": "Create a project",
+            "description": "Pick what you want to build, and DevStarter installs and configures everything.\n[$(sparkle) New Project](command:devstarter.newProject)",
+            "media": {
+              "markdown": "media/walkthrough/create.md"
+            },
+            "completionEvents": [
+              "onCommand:devstarter.newProject"
+            ]
+          },
+          {
+            "id": "react",
+            "title": "Not sure? Try React",
+            "description": "React with Vite and Tailwind CSS is a great first stack.\n[Create a React project](command:devstarter.newProject?%5B%22react%22%5D)",
+            "media": {
+              "markdown": "media/walkthrough/react.md"
+            }
+          },
+          {
+            "id": "run",
+            "title": "Run it and make changes",
+            "description": "Your project opens with the dev server running and a GETTING_STARTED.md guide.\n[$(book) Open the guide](command:devstarter.openGuide)",
+            "media": {
+              "markdown": "media/walkthrough/run.md"
+            },
+            "completionEvents": [
+              "onCommand:devstarter.openGuide"
+            ]
+          }
+        ]
       }
     ]
   },
-
-  "license": "LICENSE.txt",
-
+  "license": "MIT",
   "scripts": {
     "vscode:prepublish": "pnpm package",
-
     "compile": "pnpm check-types && pnpm lint && node esbuild.js",
-
     "watch": "pnpm --parallel watch:esbuild watch:tsc",
-
     "watch:esbuild": "node esbuild.js --watch",
-
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-
     "package": "pnpm check-types && pnpm lint && node esbuild.js --production",
-
     "compile-tests": "tsc -p . --outDir out",
-
     "watch-tests": "tsc -p . -w --outDir out",
-
     "pretest": "pnpm compile-tests && pnpm compile && pnpm lint",
-
     "check-types": "tsc --noEmit",
-
     "lint": "eslint src",
-
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "smoke": "node scripts/smoke/build.mjs"
   },
-
   "devDependencies": {
-    "@types/inquirer": "^9.0.9",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "^1.105.0",
-    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^2.5.2",
-    "esbuild": "^0.27.0",
-    "eslint": "^9.39.1",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.12.0",
+    "prettier": "^3.9.9",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.3"
-  },
-
-  "dependencies": {
-    "inquirer": "^13.0.1"
   }
 }

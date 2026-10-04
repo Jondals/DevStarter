@@ -12,3 +12,14 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+scripts/**
+out-smoke/**
+.github/**
+.prettierrc
+.prettierignore
+pnpm-workspace.yaml
+pnpm-lock.yaml
+out-smoke/**
+.vscode-test.mjs
+*.vsix
+jscpd-report/**

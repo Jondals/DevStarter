@@ -1,0 +1,30 @@
+# Cada lunes crea proyectos reales con las últimas versiones de los generadores
+# (create-vite, create-next-app, sv, @nestjs/cli, @angular/cli…). Si alguno cambia
+# y se rompe, este workflow falla y GitHub avisa por correo antes que los usuarios.
+name: Scaffolders (weekly)
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: git config --global user.name "DevStarter CI" && git config --global user.email "ci@example.com"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm smoke

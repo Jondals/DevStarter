@@ -1,0 +1,32 @@
+# CI de DevStarter: tipos, lint, formato y tests en cada push y pull request.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check-types
+      - run: pnpm lint
+      - run: pnpm format:check
+      # Los tests abren VS Code: en Linux necesitan una pantalla virtual (xvfb).
+      - name: Test (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm test
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        run: pnpm test
