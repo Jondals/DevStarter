@@ -7,7 +7,7 @@
     "color": "#1e1b4b",
     "theme": "dark"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "Jondals",
   "repository": {
     "type": "git",
@@ -21,7 +21,11 @@
     "Education"
   ],
   "keywords": [
-    "scaffold",
+    "devstarter",
+    "dev starter",
+    "starter",
+    "project templates",
+    "boilerplates",
     "starter",
     "template",
     "beginner",
