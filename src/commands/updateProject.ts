@@ -33,6 +33,18 @@ async function pickProjectFolder(): Promise<string | undefined> {
 
 /** Comando "Update Project": actualiza las librerías de todas las partes del proyecto. */
 export async function updateProject(): Promise<void> {
+    // Instalar paquetes ejecuta los scripts de instalación del proyecto (y de sus dependencias):
+    // en una carpeta no confiable (Restricted Mode) no se hace hasta que la persona la marque como segura.
+    if (!vscode.workspace.isTrusted) {
+        const choice = await vscode.window.showWarningMessage(
+            'Updating libraries runs the install scripts of this project, so VS Code first needs you to trust this folder.',
+            'Manage Workspace Trust',
+        );
+        if (choice) {
+            await vscode.commands.executeCommand('workbench.trust.manage');
+        }
+        return;
+    }
     const root = await pickProjectFolder();
     if (!root) {
         return;

@@ -30,3 +30,17 @@ jobs:
       - name: Test (Windows)
         if: runner.os == 'Windows'
         run: pnpm test
+
+  # Los mismos tests en la version MINIMA de VS Code que declara el manifiesto (engines.vscode):
+  # asi se garantiza que la extension instala y funciona en los IDEs derivados mas antiguos.
+  test-minimum-vscode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: xvfb-run -a pnpm test:min

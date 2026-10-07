@@ -460,6 +460,39 @@ suite('DevStarter · click by click', function () {
         assert.strictEqual(await isListening(port), false);
     });
 
+    test('Update Project refuses to run install scripts in an untrusted folder', async function () {
+        this.timeout(30000);
+        const messages: string[] = [];
+        const original = vscode.window.showWarningMessage;
+        (vscode.window as any).showWarningMessage = async function (message: string) {
+            messages.push(message);
+            return undefined;
+        };
+        let asked = 0;
+        (vscode.window as any).showQuickPick = async function () {
+            asked++;
+            return undefined;
+        };
+        const descriptor = Object.getOwnPropertyDescriptor(vscode.workspace, 'isTrusted');
+        Object.defineProperty(vscode.workspace, 'isTrusted', {
+            configurable: true,
+            get() {
+                return false;
+            },
+        });
+        try {
+            await vscode.commands.executeCommand('devstarter.updateProject');
+        } finally {
+            (vscode.window as any).showWarningMessage = original;
+            if (descriptor) {
+                Object.defineProperty(vscode.workspace, 'isTrusted', descriptor);
+            }
+        }
+        assert.strictEqual(messages.length, 1, 'it should explain why it does nothing');
+        assert.match(messages[0], /trust this folder/);
+        assert.strictEqual(asked, 0, 'it must not even offer to update');
+    });
+
     test('Recent Projects shows created projects and asks how to open them', async function () {
         this.timeout(20000);
         const api = await devstarterApi();

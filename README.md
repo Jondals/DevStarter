@@ -1,7 +1,7 @@
 <h1 align="center">DevStarter</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-818cf8" alt="version 1.0.0">
+  <img src="https://img.shields.io/badge/version-1.0.2-818cf8" alt="version 1.0.2">
   <img src="https://img.shields.io/badge/VS%20Code-%5E1.105-2dd4bf" alt="VS Code ^1.105">
   <img src="https://img.shields.io/badge/templates-24-e879f9" alt="24 templates">
   <img src="https://img.shields.io/badge/libraries-54-38bdf8" alt="54 libraries">
@@ -17,7 +17,7 @@ Pick what you want to build. You can add a backend, a database and popular libra
 - connects frontend and backend,
 - opens the project with the dev servers already running.
 
-> **Current version: 1.0.0**. See the **Changelog** tab for the full history.
+> **Current version: 1.0.2**. See the **Changelog** tab for the full history.
 
 ## Features
 
@@ -152,11 +152,13 @@ On Linux, tools other than PHP, Rust, pnpm and bun must be installed with your d
 ```bash
 pnpm install
 pnpm watch      # then press F5 ("Run Extension") to open the Extension Development Host
-pnpm test       # 54 tests inside VS Code, including click-by-click and end-to-end ones
+pnpm test       # 55 tests inside VS Code, including click-by-click and end-to-end ones
+pnpm test:min   # the same tests inside the minimum VS Code version (1.90)
 pnpm smoke      # create real projects with the latest generators (pnpm smoke react next to pick cases)
 pnpm format     # format the code with Prettier
 pnpm lint       # ESLint (the project style forbids arrow functions)
 pnpm package    # production build
+pnpm publish:check # check everything and build the .vsix without publishing
 ```
 
 Every source file starts with a comment that explains what it does, and every function is documented. The comments are in Spanish.
@@ -182,15 +184,29 @@ Every source file starts with a comment that explains what it does, and every fu
 
 ## Install
 
-Build the extension and install the `.vsix`:
+Search for **DevStarter** (or *devstarter*, any case) in the Extensions view of **VS Code, Cursor, Windsurf, VSCodium, Trae** or any IDE based on VS Code. It is published in the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=Jondals.devstarter) and in [Open VSX](https://open-vsx.org/extension/Jondals/devstarter). It needs VS Code **1.90** or newer (or the equivalent in your IDE).
+
+Or build it yourself and install the `.vsix`:
 
 ```bash
 pnpm install
-pnpm dlx @vscode/vsce package --no-dependencies --allow-missing-repository
-code --install-extension devstarter-1.0.0.vsix
+pnpm package:vsix
+code --install-extension devstarter-1.0.2.vsix
 ```
 
-The package is tiny (12 files, 83 KB) and has **no runtime dependencies**.
+The package is tiny (12 files, about 85 KB) and has **no runtime dependencies**.
+
+## Publishing (for maintainers)
+
+One action publishes the same `.vsix` to the **Microsoft Marketplace** and to **Open VSX** (the store of Cursor, Windsurf, VSCodium and others):
+
+1. Bump `version` in `package.json` and add its `## [x.y.z]` entry to `CHANGELOG.md` (the script refuses to publish without it).
+2. In VS Code: **Terminal → Run Task → DevStarter: Publish everywhere**. First try **DevStarter: Publish (ensayo)**, which checks and packages without publishing.
+3. Paste the two tokens when asked (the input is hidden and never saved):
+   - **Microsoft:** an Azure DevOps personal access token with *Marketplace → Manage* (organization: *All accessible organizations*).
+   - **Open VSX:** a token from open-vsx.org → your profile → *Access Tokens*. The namespace must exist once: `pnpm exec ovsx create-namespace Jondals -p <token>`.
+
+From a terminal: `pnpm publish:all` (or `publish:marketplace` / `publish:openvsx` for one store). To keep the tokens yourself, define the user environment variables `VSCE_PAT` and `OVSX_PAT` and use the task *DevStarter: Publish (tokens del sistema)*. There is also a GitHub Actions workflow (`publish.yml`) that publishes when you push a version tag.
 
 ## Security
 
@@ -222,7 +238,8 @@ Frameworks release new versions all the time. DevStarter is built so that this d
 
 | Version | Highlights |
 | --- | --- |
-| **1.0.0** | First stable release: tool updates that really update (Node.js official installer with checksum), the project starts and opens in your browser, security review, modular code, no duplicated code, packaged `.vsix` |
+| **1.0.2** | Better search visibility (also "Dev Starter"), works from VS Code 1.90 (more IDEs), one-click publishing to Microsoft + Open VSX, Workspace Trust |
+| 1.0.0 | First stable release: tool updates that really update (Node.js official installer with checksum), the project starts and opens in your browser, security review, modular code, no duplicated code, packaged `.vsix` |
 | 0.6.1 | Beginners can choose every technology and option, with ⭐ Recommended marked in each step |
 | 0.6.0 | Simpler first screen and plain-language summary for beginners, Help command, DevStarter log, clear error messages everywhere, code review fixes |
 | 0.5.4 | The project opens by itself and starts frontend and backend; safer F5 test window |

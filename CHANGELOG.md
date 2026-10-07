@@ -1,4 +1,37 @@
 # Change Log
+## [1.0.2] - 2026-10-07
+
+Version 1.0.1 was prepared but never published, so everything below ships in 1.0.2.
+
+### Visibility in the stores
+- **Search audit, done against the live APIs of the three stores.** Searching "DevStarter" or "devstarter" (any case) returns DevStarter as the **only** result, in position 1, in the Microsoft Marketplace, Open VSX and Cursor's marketplace. The one query that failed was **"Dev Starter" with a space**: it did not find DevStarter in Open VSX or in Cursor (it ranked 25th in Microsoft's).
+- **Fix:** the description now says "DevStarter (dev starter): create any project…", and the keyword list is rebuilt with exactly 30 unique tags (the store limit): `devstarter`, `dev-starter`, `dev starter`, `project starter`, `project generator`, `scaffold`, `scaffolding`, `boilerplate`, `new project`, `create project`, the main frameworks and more. The duplicated `starter` tag was removed.
+- The listing now links to **Issues** and to the project home page.
+- If a store still does not show it right after publishing, that is indexing delay: Open VSX and Cursor refresh their search index periodically and Microsoft validates each upload for a few minutes.
+
+### Compatibility
+- **Minimum VS Code lowered from 1.105 to 1.90** (June 2024), so DevStarter installs in the derived IDEs that lag behind (Cursor, Windsurf, VSCodium, Trae…). The types are pinned to exactly `@types/vscode@1.90.0`, so the compiler guarantees that no newer-only API is used.
+- **The 54 tests pass inside a real VS Code 1.90.0**, not only in the latest one. New `pnpm test:min` runs them in the minimum version declared by the manifest, and CI has a job for it.
+- **Workspace Trust declared:** creating projects works in any window; **Update Project Libraries** refuses to run in an untrusted folder (it would run that project's install scripts) and offers to open Manage Workspace Trust. Virtual workspaces are declared unsupported. New test (55 in total).
+
+### Publishing from VS Code
+- **One action publishes to both stores:** `Terminal → Run Task → DevStarter: Publish everywhere` (Microsoft Marketplace + Open VSX). The tokens are asked in a hidden box and only passed to that process; they are never written to any file.
+  - `DevStarter: Publish (ensayo)`: checks everything and builds the `.vsix` without publishing.
+  - `DevStarter: Publish everywhere (fast)`: skips the tests.
+  - `DevStarter: Publish (tokens del sistema)`: uses `VSCE_PAT` / `OVSX_PAT` if you keep them as environment variables.
+- Same from a terminal: `pnpm publish:check`, `pnpm publish:all`, `pnpm publish:marketplace`, `pnpm publish:openvsx`.
+- `scripts/publish.mjs` does it in order: checks that CHANGELOG.md has the entry for the version, asks each store whether that version is already published (it cannot be uploaded twice), runs types, lint, format and tests, **builds the `.vsix` once and uploads that same file to both stores**, waits until each store shows the new version and prints the links. If one store fails the other is still tried, with a hint for the usual errors (unknown Open VSX namespace, expired token, version already published). It asks for confirmation before publishing.
+- Optional **GitHub Actions workflow** (`publish.yml`): publish by pushing a tag (`git tag v1.0.2 && git push origin v1.0.2`) or by hand, with the secrets `VSCE_PAT` and `OVSX_PAT`.
+- `@vscode/vsce` 4.0.0 and `ovsx` 1.2.0 are now dev dependencies (pinned by the lockfile instead of downloading "latest" on every release).
+
+### Security
+- `pnpm audit` for what ships in the extension: **no vulnerabilities** (it has no runtime dependencies). The new publishing tools bring one advisory in a development-only dependency (`braces`, through `@vscode/vsce`), with no patched version published yet.
+- Removed a `braces` override that asked for a version that does not exist (the latest, 3.0.3, is itself still vulnerable).
+- The native build scripts of `keytar` and `vsce-sign` are blocked on purpose: tokens go through environment variables and signatures are not verified.
+
+### Notes
+- The Microsoft Marketplace publisher id is `Jondals` (capital J), which is what `package.json` now uses.
+
 ## [1.0.0] - 2026-10-04
 
 First stable release.

@@ -1,5 +1,14 @@
-// See https://go.microsoft.com/fwlink/?LinkId=733558
-// for the documentation about the tasks.json format
+// Tareas de VS Code (Terminal > Ejecutar tarea...).
+//
+// ── PUBLICAR (Microsoft Marketplace + Open VSX de una vez) ──────────────────────────────
+//  "DevStarter: Publish (ensayo)"            comprueba y empaqueta, sin publicar nada
+//  "DevStarter: Publish everywhere"          publica en las dos tiendas pidiendo los tokens
+//  "DevStarter: Publish everywhere (fast)"   igual, sin ejecutar los tests
+//  "DevStarter: Publish (tokens del sistema)" usa las variables VSCE_PAT y OVSX_PAT ya guardadas
+//
+// Los tokens se piden en un cuadro (con la escritura oculta) y solo se pasan a ese proceso:
+// no se guardan en ningun fichero. Para guardarlos tu mismo, define las variables de usuario
+// VSCE_PAT y OVSX_PAT y usa la ultima tarea.
 {
 	"version": "2.0.0",
 	"tasks": [
@@ -59,6 +68,73 @@
 				"npm: watch-tests"
 			],
 			"problemMatcher": []
+		},
+
+		// ── Publicar ────────────────────────────────────────────────────────────────
+		{
+			"label": "DevStarter: Publish (ensayo)",
+			"detail": "Comprueba todo y crea el .vsix, pero NO publica nada",
+			"type": "shell",
+			"command": "pnpm publish:check",
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "clear": true }
+		},
+		{
+			"label": "DevStarter: Publish everywhere",
+			"detail": "Marketplace de Microsoft + Open VSX (Cursor, Windsurf, VSCodium...) con comprobaciones completas",
+			"type": "shell",
+			"command": "pnpm publish:all",
+			"options": {
+				"env": {
+					"VSCE_PAT": "${input:vsceToken}",
+					"OVSX_PAT": "${input:ovsxToken}"
+				}
+			},
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "clear": true }
+		},
+		{
+			"label": "DevStarter: Publish everywhere (fast)",
+			"detail": "Igual que la anterior pero sin ejecutar los tests (tipos, lint y formato si se ejecutan)",
+			"type": "shell",
+			"command": "pnpm publish:all --skip-tests",
+			"options": {
+				"env": {
+					"VSCE_PAT": "${input:vsceToken}",
+					"OVSX_PAT": "${input:ovsxToken}"
+				}
+			},
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "clear": true }
+		},
+		{
+			"label": "DevStarter: Publish (tokens del sistema)",
+			"detail": "Usa las variables de entorno VSCE_PAT y OVSX_PAT que ya tengas guardadas",
+			"type": "shell",
+			"command": "pnpm publish:all",
+			"problemMatcher": [],
+			"presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "clear": true }
+		},
+		{
+			"label": "DevStarter: Package .vsix",
+			"detail": "Crea el paquete .vsix para instalarlo a mano",
+			"type": "shell",
+			"command": "pnpm package:vsix",
+			"problemMatcher": []
+		}
+	],
+	"inputs": [
+		{
+			"id": "vsceToken",
+			"type": "promptString",
+			"description": "Token del Marketplace de Microsoft (Azure DevOps, permiso Marketplace > Manage). No se guarda.",
+			"password": true
+		},
+		{
+			"id": "ovsxToken",
+			"type": "promptString",
+			"description": "Token de Open VSX (open-vsx.org > Access Tokens). No se guarda.",
+			"password": true
 		}
 	]
 }

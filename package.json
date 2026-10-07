@@ -1,20 +1,31 @@
 {
   "name": "devstarter",
   "displayName": "DevStarter",
-  "description": "Start any project in a few clicks, even if you have never programmed: pick an idea (3D website, game, blog, app…) or a stack (React, Next.js, Express, FastAPI, Laravel…). Adds databases, 54 libraries with live demos, Docker and CI, installs and updates your tools, and keeps your project libraries up to date.",
+  "description": "DevStarter (dev starter): create any project in a few clicks, even if you have never programmed. React, Next.js, Vue, Angular, Express, FastAPI, Django, Laravel and more, with databases, libraries, Docker and CI.",
   "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#1e1b4b",
     "theme": "dark"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "Jondals",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Jondals/DevStarter"},
+    "url": "https://github.com/Jondals/DevStarter"
+  },
   "packageManager": "pnpm@11.22.0",
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.90.0"
+  },
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "DevStarter creates projects and runs tools on your computer, so it needs a real folder."
+    },
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Updating the libraries of a project runs its install scripts, so it needs a trusted folder. Creating new projects works anywhere."
+    }
   },
   "categories": [
     "Other",
@@ -22,27 +33,35 @@
   ],
   "keywords": [
     "devstarter",
+    "dev-starter",
     "dev starter",
     "starter",
-    "project templates",
-    "boilerplates",
-    "starter",
+    "project starter",
+    "project generator",
+    "scaffold",
+    "scaffolding",
+    "boilerplate",
     "template",
+    "new project",
+    "create project",
     "beginner",
+    "no-experience",
+    "creative-coding",
     "fullstack",
     "react",
     "nextjs",
-    "vite",
-    "tailwind",
+    "vue",
+    "angular",
+    "svelte",
     "express",
     "fastapi",
+    "django",
     "laravel",
-    "database",
+    "vite",
+    "tailwind",
     "docker",
-    "threejs",
-    "gsap",
-    "creative-coding",
-    "no-experience"
+    "database",
+    "threejs"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -255,18 +274,30 @@
     "test": "vscode-test",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
-    "smoke": "node scripts/smoke/build.mjs"
+    "smoke": "node scripts/smoke/build.mjs",
+    "package:vsix": "vsce package --no-dependencies",
+    "publish:check": "node scripts/publish.mjs --dry-run",
+    "publish:all": "node scripts/publish.mjs",
+    "publish:marketplace": "node scripts/publish.mjs --only marketplace",
+    "publish:openvsx": "node scripts/publish.mjs --only openvsx",
+    "test:min": "node scripts/test-min.mjs"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "@types/vscode": "^1.105.0",
+    "@types/vscode": "1.90.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.12.0",
+    "ovsx": "^1.2.0",
     "prettier": "^3.9.9",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.3"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/Jondals/DevStarter/issues"
+  },
+  "homepage": "https://github.com/Jondals/DevStarter#readme"
 }
