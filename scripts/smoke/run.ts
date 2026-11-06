@@ -1,16 +1,16 @@
 /**
  * scripts/smoke/run.ts
  * ────────────────────
- * "Smoke test" de mantenimiento: crea proyectos reales con los generadores más usados
- * (create-vite, create-next-app, sv, create-astro, @nestjs/cli…) y comprueba que siguen
- * funcionando con sus últimas versiones. Si un generador cambia sus opciones y se rompe,
- * este script lo detecta antes que los usuarios.
+ * Maintenance "smoke test": creates real projects with the most used generators
+ * (create-vite, create-next-app, sv, create-astro, @nestjs/cli…) and checks that they still
+ * work with their latest versions. If a generator changes its options and breaks,
+ * this script catches it before users do.
  *
- *   pnpm smoke                    → todos los casos
- *   pnpm smoke react next         → solo los casos indicados
- *   SMOKE_VERBOSE=1 pnpm smoke    → ver la salida del terminal
+ *   pnpm smoke                    → every case
+ *   pnpm smoke react next         → only the given cases
+ *   SMOKE_VERBOSE=1 pnpm smoke    → show the terminal output
  *
- * Lo ejecuta cada semana el workflow .github/workflows/scaffolders.yml.
+ * It runs every week in the .github/workflows/scaffolders.yml workflow.
  */
 import * as fs from 'fs';
 import * as os from 'os';
@@ -21,7 +21,7 @@ import { detectTool, packageManager } from '../../src/tools';
 import { buildProject, ProjectChoice } from '../../src/project';
 import { Database } from '../../src/scaffold/database';
 
-/** Un caso de prueba: qué proyecto crear. */
+/** A test case: which project to create. */
 interface SmokeCase {
     id: string;
     template: string;
@@ -29,7 +29,7 @@ interface SmokeCase {
     database?: Database;
     libraries?: string[];
     typescript?: boolean;
-    /** Necesita Python instalado. */
+    /** Needs Python installed. */
     python?: boolean;
 }
 
@@ -50,10 +50,10 @@ const cases: SmokeCase[] = [
 ];
 
 /**
- * Crea un proyecto y devuelve si ha ido bien.
- * @param c caso de prueba
- * @param parentDir carpeta donde crearlo
- * @param python comando de Python (si está instalado)
+ * Creates a project and tells whether it worked.
+ * @param c test case
+ * @param parentDir folder to create it in
+ * @param python Python command (if installed)
  */
 async function runCase(c: SmokeCase, parentDir: string, python: string | undefined): Promise<boolean> {
     const template = findTemplate(c.template);
@@ -80,7 +80,7 @@ async function runCase(c: SmokeCase, parentDir: string, python: string | undefin
     return result === 'success';
 }
 
-/** Ejecuta los casos pedidos (o todos) y termina con código 1 si alguno falla. */
+/** Runs the requested cases (or all of them) and exits with code 1 if any fails. */
 async function main(): Promise<void> {
     const wanted = process.argv.slice(2);
     const selected = wanted.length ? cases.filter(isWanted) : cases;
@@ -88,7 +88,7 @@ async function main(): Promise<void> {
     const python = (await detectTool('python')).command;
     const results: Array<[string, string]> = [];
 
-    /** ¿Se ha pedido este caso por línea de comandos? */
+    /** Whether this case was requested on the command line. */
     function isWanted(c: SmokeCase): boolean {
         return wanted.includes(c.id);
     }
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
     process.exit(failed ? 1 : 0);
 }
 
-/** ¿Este resultado es un fallo? */
+/** Whether this result is a failure. */
 function isFailed(result: [string, string]): boolean {
     return result[1] === 'FAILED';
 }

@@ -1,5 +1,5 @@
-# Dependabot abre pull requests cada semana para mantener al día las dependencias
-# de la extensión (TypeScript, esbuild, ESLint…) y las acciones de GitHub.
+# Dependabot opens weekly pull requests to keep the extension's dependencies
+# (TypeScript, esbuild, ESLint…) and the GitHub Actions up to date.
 version: 2
 updates:
   - package-ecosystem: npm

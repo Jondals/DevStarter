@@ -1,9 +1,9 @@
 /**
  * test/extension.test.ts
  * ──────────────────────
- * Tests que se ejecutan dentro de VS Code con "pnpm test".
- * Comprueban la lógica pura (nombres, comandos, plan del proyecto, utilidades)
- * y que el asistente se abre y se cierra sin errores.
+ * Tests that run inside VS Code with "pnpm test".
+ * They check the pure logic (names, commands, project plan, helpers)
+ * and that the quick wizard opens and closes without errors.
  */
 import * as assert from 'assert';
 import * as cp from 'child_process';
@@ -34,10 +34,11 @@ import { safeCommand } from '../log';
 import { scaffolderTag } from '../updates';
 import { isNodeEngineError, requiredNodeFromOutput, satisfies } from '../updates';
 import { detectFramework, detectParts, updateSteps } from '../updater';
+import { useCmdWrappers } from '../psPolicy';
 
 /**
- * Una elección de proyecto con valores por defecto, para no repetir en cada test.
- * @param overrides valores a cambiar
+ * A project choice with default values, so each test does not repeat them.
+ * @param overrides values to change
  */
 function choice(overrides: Partial<ProjectChoice> = {}): ProjectChoice {
     return {
@@ -55,8 +56,8 @@ function choice(overrides: Partial<ProjectChoice> = {}): ProjectChoice {
 }
 
 /**
- * Títulos de los pasos de un proyecto (para comprobar que aparecen).
- * @param c elección
+ * Step titles of a project (to check that they appear).
+ * @param c choice
  */
 function stepTitles(c: ProjectChoice): string[] {
     const titles: string[] = [];
@@ -131,6 +132,19 @@ suite('DevStarter', function () {
         assert.strictEqual(packageManager('bun').run('dev'), 'bun run dev');
     });
 
+    test('PowerShell-blocked commands fall back to the .cmd wrappers', function () {
+        assert.strictEqual(useCmdWrappers('npm run dev'), 'npm.cmd run dev');
+        assert.strictEqual(useCmdWrappers('pnpm dev && npx vite'), 'pnpm.cmd dev && npx.cmd vite');
+        // * Real executables and look-alike names are left alone.
+        assert.strictEqual(useCmdWrappers('bun run dev'), 'bun run dev');
+        assert.strictEqual(useCmdWrappers('php artisan serve'), 'php artisan serve');
+        assert.strictEqual(useCmdWrappers('npmx run'), 'npmx run');
+        assert.match(
+            explainError('npm.ps1 cannot be loaded because running scripts is disabled on this system') ?? '',
+            /RemoteSigned/,
+        );
+    });
+
     test('explains common errors', function () {
         assert.match(explainError('npm warn EBADENGINE Unsupported engine') ?? '', /Node\.js/);
         assert.match(explainError('getaddrinfo ENOTFOUND registry.npmjs.org') ?? '', /network/);
@@ -186,7 +200,7 @@ suite('DevStarter', function () {
             for (const backend of backends) {
                 const owner = backend ?? t;
                 const dbs = [undefined, ...(owner.databases ?? [])];
-                // Todas las librerías aplicables a la vez (el caso más cargado) y ninguna.
+                // * Every applicable library at once (the heaviest case) and none.
                 const all: string[] = [];
                 for (const lib of [...librariesFor(t.id), ...(backend ? librariesFor(backend.id) : [])]) {
                     all.push(lib.id);
@@ -259,7 +273,7 @@ suite('DevStarter', function () {
             const command = safeCommand('doing something', async function () {
                 throw new Error('boom');
             });
-            await command(); // no debe lanzar
+            await command(); // must not throw
         } finally {
             (vscode.window as any).showErrorMessage = original;
         }
@@ -461,10 +475,10 @@ suite('DevStarter', function () {
                 }
             }
             assert.ok(commands.join('\n').includes(expected), `${folder}: ${commands.join(' | ')}`);
-            // El framework se protege de la actualización genérica de versiones.
+            // * The framework is protected from the generic version update.
             assert.ok(commands.join('\n').includes('--reject'), folder);
         }
-        // Un proyecto sin framework conocido no lleva herramienta oficial.
+        // A project without a known framework gets no official tool.
         const plain = path.join(root, 'plain');
         fs.mkdirSync(plain);
         fs.writeFileSync(path.join(plain, 'package.json'), '{"dependencies":{"left-pad":"1.0.0"}}');
@@ -487,11 +501,11 @@ suite('DevStarter', function () {
         const step = buildProject(c, 'python').steps[0];
         assert.ok(step.kind === 'command' && step.command.includes('pnpm dlx @angular/cli@latest'));
         if (step.kind === 'command') {
-            // Ejecutamos solo la parte del arreglo (lo que va después de "&&"), como haría la consola.
+            // ? Only run the fix part (what comes after "&&"), as the shell would.
             const fix = step.command.slice(step.command.indexOf(' && ') + 4);
             cp.execSync(fix, { cwd: root });
             assert.strictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).packageManager, 'pnpm@11.22.0');
-            // npm no necesita el arreglo.
+            // npm does not need the fix.
             const npmStep = buildProject(choice({ template: findTemplate('angular')! }), 'python').steps[0];
             assert.ok(npmStep.kind === 'command' && !npmStep.command.includes(' && node -e'));
         }

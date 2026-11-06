@@ -1,14 +1,14 @@
 /**
  * test/interactive.test.ts
  * ────────────────────────
- * Tests "clic a clic": sustituyen las ventanas de VS Code (QuickPick, InputBox, terminal,
- * diálogos y notificaciones) por versiones falsas que eligen opciones como lo haría una
- * persona, y ejecutan los comandos reales de la extensión:
+ * "Click by click" tests: they replace VS Code's windows (QuickPick, InputBox, terminal,
+ * dialogs and notifications) with fakes that pick options the way a person would,
+ * and run the extension's real commands:
  *
- *  - El asistente completo, con botón "atrás" y el paso de librerías.
- *  - Una idea ("Start from an idea") que rellena todo sola.
- *  - Check My Tools y Recent Projects.
- *  - De principio a fin: crear un proyecto real desde una idea (necesita internet).
+ *  - The whole quick wizard, with the Back button and the libraries step.
+ *  - An idea ("Start from an idea") that pre-fills every step and keeps them editable.
+ *  - Check My Tools and Recent Projects.
+ *  - End to end: create a real project from an idea (needs internet).
  */
 import * as assert from 'assert';
 import * as fs from 'fs';
@@ -38,14 +38,14 @@ import {
     wait,
 } from './helpers';
 
-/** Ruta normalizada para comparar (en Windows las rutas no distinguen mayúsculas ni barras). */
+/** Normalized path for comparisons (Windows paths ignore case and slash direction). */
 function normalizeOpened(item: { folder: string; newWindow: boolean }): { folder: string; newWindow: boolean } {
     return { folder: vscode.Uri.file(item.folder).fsPath.toLowerCase(), newWindow: item.newWindow };
 }
 
 /**
- * Ejecuta afterCreate con terminales y apertura de carpetas falsos.
- * @param hasWorkspace simula que ya hay una carpeta abierta (o no)
+ * Runs afterCreate with fake terminals and folder opening.
+ * @param hasWorkspace pretends a folder is already open (or not)
  */
 async function runAfterCreate(hasWorkspace: boolean): Promise<{
     terminals: Array<[string, string]>;
@@ -74,7 +74,7 @@ async function runAfterCreate(hasWorkspace: boolean): Promise<{
         }
         return original.call(vscode.commands, command, ...args);
     };
-    // "Hay una carpeta abierta" = workspaceFolders no está vacío.
+    // "A folder is open" = workspaceFolders is not empty.
     const descriptor = Object.getOwnPropertyDescriptor(vscode.workspace, 'workspaceFolders');
     Object.defineProperty(vscode.workspace, 'workspaceFolders', {
         configurable: true,
@@ -82,7 +82,7 @@ async function runAfterCreate(hasWorkspace: boolean): Promise<{
             return hasWorkspace ? [{ uri: vscode.Uri.file('C:/other'), name: 'other', index: 0 }] : undefined;
         },
     });
-    // No queremos abrir el navegador de verdad: la web no responde y se queda esperando en segundo plano.
+    // ! We do not want to open a real browser: the site does not answer and it would keep waiting in the background.
     const memento = memoryMemento();
     try {
         await afterCreate(
@@ -108,6 +108,12 @@ async function runAfterCreate(hasWorkspace: boolean): Promise<{
 }
 
 suite('DevStarter · click by click', function () {
+    // * These tests drive the keyboard (QuickPick) wizard, so "New Project" must open it instead of the webview.
+    suiteSetup(async function () {
+        await vscode.workspace
+            .getConfiguration('devstarter')
+            .update('wizardStyle', 'quick', vscode.ConfigurationTarget.Global);
+    });
     teardown(restoreWindow);
 
     test('the wizard goes through every step, with Back and libraries', async function () {
@@ -116,7 +122,7 @@ suite('DevStarter · click by click', function () {
         const firstScreens: vscode.QuickPickItem[][] = [];
         const starred = new Set<string>();
         const seen = installFakeInputs(function (placeholder, items) {
-            // Anotamos todo lo que el asistente marca como recomendado, en cualquier paso.
+            // Record everything the wizard marks as recommended, in any step.
             for (const item of selectable(items)) {
                 if (item.description?.includes('⭐ Recommended')) {
                     starred.add(plainLabel(item));
@@ -140,7 +146,7 @@ suite('DevStarter · click by click', function () {
             }
             if (placeholder.includes('libraries')) {
                 librariesVisits++;
-                // La primera vez pulsamos "atrás" para comprobar que vuelve a la base de datos.
+                // ? The first time we press Back to check that it returns to the database step.
                 return librariesVisits === 1 ? 'back' : { labels: ['Three.js', 'GSAP', 'Zustand', 'Helmet'] };
             }
             if (placeholder.includes('Extras')) {
@@ -169,12 +175,12 @@ suite('DevStarter · click by click', function () {
         })) as ProjectChoice;
 
         assert.ok(choice, 'the wizard returned nothing');
-        // Un principiante ve TODO en la primera pantalla: las ideas y todas las tecnologías...
+        // A beginner sees EVERYTHING on the first screen: the ideas and every technology...
         const labels = firstScreens[0].map(plainLabel);
         for (const expected of ['A 3D website', 'React', 'Laravel', 'Flutter', 'Rust (Axum)', 'Spring Boot']) {
             assert.ok(labels.includes(expected), `${expected} missing: ${labels.join(', ')}`);
         }
-        // ...con la recomendación marcada y las recomendadas primero dentro de su grupo (FastAPI antes que NestJS).
+        // ...with the recommendation marked and recommended ones first in their group (FastAPI before NestJS).
         const react = firstScreens[0].find(function (i) {
             return plainLabel(i) === 'React';
         });
@@ -197,7 +203,7 @@ suite('DevStarter · click by click', function () {
         assert.deepStrictEqual([...choice.libraries].sort(), ['gsap', 'helmet', 'three', 'zustand']);
         assert.ok(choice.extras.includes('vscode') && choice.extras.includes('git'));
         assert.strictEqual(librariesVisits, 2, 'Back from libraries should return to it after the database step');
-        // Después de "atrás" se vuelve a preguntar por la base de datos.
+        // After Back, the database question is asked again.
         const order: string[] = [];
         for (const p of seen) {
             order.push(p.split(' ')[0]);
@@ -206,14 +212,18 @@ suite('DevStarter · click by click', function () {
         assert.ok(seen.filter(isDatabaseQuestion).length === 2, order.join(' → '));
     });
 
-    test('an idea fills everything and jumps to folder and name', async function () {
+    test('an idea pre-fills every step but keeps them editable (Git included)', async function () {
         this.timeout(20000);
-        const seen = installFakeInputs(function (placeholder) {
+        const extrasOffered: string[] = [];
+        const seen = installFakeInputs(function (placeholder, items) {
             if (placeholder.includes('coding experience')) {
                 return { labels: ["I'm new to programming"] };
             }
             if (placeholder.includes('What do you want')) {
                 return { labels: ['A 3D website'] };
+            }
+            if (placeholder.includes('Extras')) {
+                extrasOffered.push(...selectable(items).map(plainLabel));
             }
             if (placeholder.includes('Where should')) {
                 return { index: 0 };
@@ -221,7 +231,8 @@ suite('DevStarter · click by click', function () {
             if (placeholder.includes('Ready to create')) {
                 return { labels: ['Create project'] };
             }
-            throw new Error(`An idea should skip this step: ${placeholder}`);
+            // * Every other step is shown with the idea's answers already selected: just accept them.
+            return 'defaults';
         }, `idea-test-${Date.now()}`);
 
         const choice = (await runWizard({
@@ -237,7 +248,14 @@ suite('DevStarter · click by click', function () {
         assert.strictEqual(choice.template.id, 'vanilla');
         assert.deepStrictEqual([...choice.libraries].sort(), ['gsap', 'three']);
         assert.strictEqual(choice.tailwind, true);
-        assert.ok(seen.length <= 5, `too many steps for an idea: ${seen.join(' | ')}`);
+        assert.ok(
+            seen.some(function (p) {
+                return p.includes('libraries');
+            }),
+            `the libraries step should be shown for an idea: ${seen.join(' | ')}`,
+        );
+        assert.ok(extrasOffered.includes('Git repository'), `Git not offered: ${extrasOffered.join(', ')}`);
+        assert.ok(choice.extras.includes('git'), 'Git should stay ticked by default');
     });
 
     test('Check & Update My Tools lists versions and offers installs and updates', async function () {
@@ -247,7 +265,7 @@ suite('DevStarter · click by click', function () {
         const offered: vscode.QuickPickItem[] = [];
         (vscode.window as any).showQuickPick = async function (items: vscode.QuickPickItem[]) {
             offered.push(...items);
-            return undefined; // no instalamos ni actualizamos nada
+            return undefined; // we do not install or update anything
         };
         await vscode.commands.executeCommand('devstarter.checkTools');
         const text = output();
@@ -260,14 +278,14 @@ suite('DevStarter · click by click', function () {
             const label = plainLabel(item);
             const name = label.replace(/^(Install|Update) /, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             if (label.startsWith('Install ')) {
-                // Lo que se ofrece instalar aparece como "not installed".
+                // What is offered for install shows as "not installed".
                 assert.match(text, new RegExp(`${name}\\s+not installed`));
             } else {
-                // Lo que se ofrece actualizar está instalado (con su versión).
+                // What is offered for update is installed (with its version).
                 assert.match(text, new RegExp(`${name}\\s+v\\d`));
             }
         }
-        // npm está instalado aquí, así que siempre se ofrece actualizarlo.
+        // npm is installed here, so updating it is always offered.
         assert.ok(
             offered.some(function (i) {
                 return plainLabel(i) === 'Update npm';
@@ -282,7 +300,7 @@ suite('DevStarter · click by click', function () {
         let asked = 0;
         term.setRecovery(async function (step) {
             asked++;
-            // Simulamos el arreglo: un paso previo y el mismo paso con otro comando.
+            // Fake fix: a step first and then the same step with another command.
             return {
                 message: 'Fixing it',
                 before: [{ kind: 'task', title: 'Preparing the fix', run() {} }],
@@ -327,7 +345,7 @@ suite('DevStarter · click by click', function () {
         });
         const url = `http://localhost:${(server.address() as { port: number }).port}`;
 
-        // Simulamos las dos formas de abrir (así el test no abre ningún navegador de verdad).
+        // Fake both ways of opening (so the test never opens a real browser).
         const inside: string[] = [];
         const outside: string[] = [];
         const originalCommand = vscode.commands.executeCommand;
@@ -345,20 +363,20 @@ suite('DevStarter · click by click', function () {
         };
         const config = vscode.workspace.getConfiguration('devstarter');
         try {
-            // Sin tocar nada: en el navegador.
+            // Untouched: in the browser.
             await config.update('openBrowser', undefined, vscode.ConfigurationTarget.Global);
             await openWhenReady(url);
             assert.strictEqual(outside.length, 1, 'default should open the browser');
             assert.ok(outside[0].startsWith(url.replace('localhost', 'localhost')), outside[0]);
             assert.strictEqual(inside.length, 0);
 
-            // Dentro de VS Code.
+            // Inside VS Code.
             await config.update('openBrowser', 'inside', vscode.ConfigurationTarget.Global);
             await openWhenReady(url);
             assert.deepStrictEqual(inside, [url]);
             assert.strictEqual(outside.length, 1);
 
-            // Nada.
+            // Nothing.
             await config.update('openBrowser', 'off', vscode.ConfigurationTarget.Global);
             await openWhenReady(url);
             assert.strictEqual(inside.length + outside.length, 2);
@@ -376,7 +394,7 @@ suite('DevStarter · click by click', function () {
         const toolsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-php-'));
         const originalPath = process.env.PATH;
         try {
-            // Como si php.new acabara de instalar PHP: la carpeta aparece en el PATH del proceso.
+            // As if php.new had just installed PHP: the folder appears in the process PATH.
             process.env.PATH = `${originalPath}${path.delimiter}${toolsDir}`;
             const extra = api.syncTerminalPath() as string | undefined;
             assert.ok(extra && extra.includes(toolsDir), `terminal PATH extras: ${extra}`);
@@ -401,7 +419,7 @@ suite('DevStarter · click by click', function () {
                 },
             };
         };
-        // La URL no responde: así comprobamos también que no se bloquea esperando al navegador.
+        // The URL does not answer: this also checks that it does not block waiting for the browser.
         await api.startDevServers({
             root: 'C:/p',
             servers: [
@@ -425,12 +443,12 @@ suite('DevStarter · click by click', function () {
     test('with a folder already open, the servers start right away and the project opens in a new window', async function () {
         this.timeout(30000);
         const { terminals, saved, opened } = await runAfterCreate(true);
-        // Los servidores arrancan YA, desde esta ventana (no dependen de que la nueva tenga DevStarter)...
+        // The servers start RIGHT AWAY, from this window (they do not depend on the new one having DevStarter)...
         assert.deepStrictEqual(terminals, [
             ['Frontend', 'pnpm dev'],
             ['Backend', 'php artisan serve'],
         ]);
-        // ...y la ventana nueva ya sabe que no tiene que arrancarlos otra vez.
+        // ...and the new window already knows it must not start them again.
         assert.strictEqual(saved?.serversStarted, true);
         assert.deepStrictEqual(opened, [{ folder: 'C:\\p', newWindow: true }].map(normalizeOpened));
     });
@@ -507,7 +525,7 @@ suite('DevStarter · click by click', function () {
                     return i.label.includes('recent-demo');
                 });
             }
-            return undefined; // no abrimos ninguna ventana durante el test
+            return undefined; // we do not open any window during the test
         };
         await vscode.commands.executeCommand('devstarter.recentProjects');
 
@@ -528,7 +546,7 @@ suite('DevStarter · click by click', function () {
     test('Update Project updates an old library to its latest version (needs internet)', async function () {
         this.timeout(180000);
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'devstarter-update-'));
-        // is-number 6 es antigua: la última es la 7.
+        // is-number 6 is old: the latest is 7.
         fs.writeFileSync(
             path.join(dir, 'package.json'),
             JSON.stringify(
@@ -544,7 +562,7 @@ suite('DevStarter · click by click', function () {
         (vscode.window as any).showQuickPick = async function (items: any[], options: vscode.QuickPickOptions) {
             placeholders.push(options.placeHolder ?? '');
             if (options.canPickMany) {
-                return []; // sin opciones extra
+                return []; // no extra options
             }
             return items.find(function (i: vscode.QuickPickItem) {
                 return plainLabel(i) === 'Latest versions';
@@ -568,7 +586,7 @@ suite('DevStarter · click by click', function () {
         this.timeout(60000);
         const version = await latestCompatibleVersion('@angular/cli', '20.0.0');
         assert.ok(version, 'no compatible version found');
-        // Angular 20+ necesita Node 20.19+, así que para Node 20.0.0 tiene que ser una versión anterior.
+        // Angular 20+ needs Node 20.19+, so for Node 20.0.0 it must be an older version.
         assert.ok(Number(version!.split('.')[0]) < 20, version);
     });
 
@@ -589,7 +607,7 @@ suite('DevStarter · click by click', function () {
                 return 'defaults';
             }
             if (placeholder.includes('Extras')) {
-                return { labels: ['Recommended VS Code extensions'] }; // sin Tailwind ni Git, para ir rápido
+                return { labels: ['Recommended VS Code extensions'] }; // no Tailwind or Git, to go faster
             }
             if (placeholder.includes('Package manager')) {
                 return { labels: ['npm'] };
@@ -607,8 +625,8 @@ suite('DevStarter · click by click', function () {
         };
         const output = captureTerminal();
         const messages = silenceMessages();
-        // Si sale el aviso de "Node.js demasiado antiguo", elegimos la versión compatible
-        // (no actualizamos Node.js durante un test).
+        // If the "Node.js too old" warning shows up, pick the compatible version
+        // (we do not update Node.js during a test).
         const recoveryAnswers: string[] = [];
         (vscode.window as any).showWarningMessage = async function (message: string, ...rest: any[]) {
             messages.push(message);
@@ -634,7 +652,7 @@ suite('DevStarter · click by click', function () {
 ${text.slice(-3000)}`,
         );
         assert.ok(text.includes('is ready!'), text.slice(-3000));
-        // En este PC (Node 24.14) la última versión de Angular pide más: tiene que haberse usado otra.
+        // On a machine with an older Node the latest Angular needs more: another version must have been used.
         console.log(
             recoveryAnswers.length
                 ? `      recovered with: ${recoveryAnswers[0]}`
@@ -660,7 +678,7 @@ ${text.slice(-3000)}`,
             if (placeholder.includes('Ready to create')) {
                 return { labels: ['Create project'] };
             }
-            throw new Error(`Unexpected step: ${placeholder}`);
+            return 'defaults'; // * an idea pre-fills the other steps
         }, name);
         (vscode.window as any).showOpenDialog = async function () {
             return [vscode.Uri.file(parent)];
@@ -670,12 +688,12 @@ ${text.slice(-3000)}`,
         const opened = interceptOpenFolder();
 
         await vscode.commands.executeCommand('devstarter.newProject');
-        await wait(500); // la apertura se lanza justo después del aviso
+        await wait(500); // the project is opened right after the notification
         opened.restore();
 
         const dir = path.join(parent, name);
         const text = output();
-        // Se abre directamente, sin preguntar nada.
+        // It opens directly, without asking anything.
         assert.strictEqual(opened.calls.length, 1, 'the project should open by itself');
         assert.strictEqual(opened.calls[0].toLowerCase(), dir.toLowerCase());
         assert.ok(fs.existsSync(path.join(dir, 'package.json')), `project not created:\n${text}`);
@@ -697,7 +715,7 @@ ${text.slice(-3000)}`,
     });
 });
 
-/** ¿Es la pregunta de la base de datos? */
+/** Whether it is the database question. */
 function isDatabaseQuestion(placeholder: string): boolean {
     return placeholder.includes('database integration');
 }

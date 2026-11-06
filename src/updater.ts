@@ -1,14 +1,14 @@
 /**
  * updater.ts
  * ──────────
- * Comando "Update Project": actualiza las librerías de un proyecto existente.
+ * "Update Project" command: updates the libraries of an existing project.
  *
- *  1. Busca las partes del proyecto (la raíz y subcarpetas como frontend/ y backend/):
- *     Node (npm, pnpm o bun según el lockfile), Python (.venv), Composer, Cargo, Go y Flutter.
- *  2. Dos modos:
- *       - safe:   solo versiones menores y parches (no deberían romper nada).
- *       - latest: también versiones mayores (pueden necesitar cambios en el código).
- *  3. Opcionalmente hace un commit de seguridad antes y comprueba que sigue compilando después.
+ *  1. Finds the parts of the project (the root and subfolders like frontend/ and backend/):
+ *     Node (npm, pnpm or bun depending on the lockfile), Python (.venv), Composer, Cargo, Go and Flutter.
+ *  2. Two modes:
+ *       - safe:   only minor and patch versions (should not break anything).
+ *       - latest: major versions too (may need code changes).
+ *  3. Optionally makes a safety commit first and checks that it still builds afterwards.
  */
 import * as cp from 'child_process';
 import * as fs from 'fs';
@@ -18,27 +18,27 @@ import { packageManager, PackageManagerId } from './tools';
 
 export type UpdateMode = 'safe' | 'latest';
 
-/** Tipos de proyecto que sabemos actualizar. */
+/** Kinds of project we know how to update. */
 export type PartKind = 'node' | 'python' | 'composer' | 'cargo' | 'go' | 'flutter';
 
-/** Una parte del proyecto (una carpeta con su gestor de dependencias). */
+/** A part of the project (a folder with its dependency manager). */
 export interface ProjectPart {
     dir: string;
-    /** Carpeta relativa a la raíz ('.' si es la propia raíz). */
+    /** Folder relative to the root ('.' for the root itself). */
     label: string;
     kind: PartKind;
-    /** Gestor de paquetes (solo Node). */
+    /** Package manager (Node only). */
     pm?: PackageManagerId;
-    /** Framework con herramienta oficial de actualización (solo Node). */
+    /** Framework with an official update tool (Node only). */
     framework?: Framework;
 }
 
-/** Frameworks que se actualizan con su propia herramienta oficial. */
+/** Frameworks that are updated with their own official tool. */
 export type Framework = 'angular' | 'expo' | 'next' | 'nuxt' | 'astro';
 
 /**
- * Framework de un proyecto Node según sus dependencias.
- * @param dir carpeta del proyecto
+ * Framework of a Node project according to its dependencies.
+ * @param dir project folder
  */
 export function detectFramework(dir: string): Framework | undefined {
     let deps: Record<string, string> = {};
@@ -67,8 +67,8 @@ export function detectFramework(dir: string): Framework | undefined {
 }
 
 /**
- * Paquetes del framework que NO debe tocar la actualización genérica (los gestiona su herramienta).
- * Con comodines (@expo/*): npm-check-updates no entiende bien las expresiones con barras.
+ * Framework packages the generic update must NOT touch (their own tool handles them).
+ * ? With wildcards (@expo/*): npm-check-updates does not handle expressions with slashes well.
  */
 const frameworkPackages: Record<Framework, string> = {
     angular: '@angular/*,@angular-devkit/*,typescript,zone.js,rxjs',
@@ -78,7 +78,7 @@ const frameworkPackages: Record<Framework, string> = {
     astro: 'astro,@astrojs/*',
 };
 
-/** Carpetas que nunca hay que recorrer. */
+/** Folders that must never be walked. */
 const ignoredDirs = new Set([
     'node_modules',
     '.venv',
@@ -97,8 +97,8 @@ const ignoredDirs = new Set([
 ]);
 
 /**
- * Gestor de paquetes de un proyecto Node según su lockfile.
- * @param dir carpeta del proyecto
+ * Package manager of a Node project according to its lockfile.
+ * @param dir project folder
  */
 function detectPm(dir: string): PackageManagerId {
     if (fs.existsSync(path.join(dir, 'pnpm-lock.yaml'))) {
@@ -111,8 +111,8 @@ function detectPm(dir: string): PackageManagerId {
 }
 
 /**
- * Qué tipo de proyecto hay en una carpeta (puede haber varios, p. ej. Laravel = Composer + Node).
- * @param dir carpeta a mirar
+ * Which kind of project a folder holds (there may be several, e.g. Laravel = Composer + Node).
+ * @param dir folder to look at
  */
 function kindsIn(dir: string): PartKind[] {
     const kinds: PartKind[] = [];
@@ -141,13 +141,13 @@ function kindsIn(dir: string): PartKind[] {
 }
 
 /**
- * Busca las partes del proyecto en la raíz y hasta dos niveles de subcarpetas.
- * @param root carpeta del proyecto
+ * Finds the parts of the project at the root and up to two levels of subfolders.
+ * @param root project folder
  */
 export function detectParts(root: string): ProjectPart[] {
     const parts: ProjectPart[] = [];
 
-    /** Mira una carpeta y, si no es demasiado profunda, sus subcarpetas. */
+    /** Looks at a folder and, if it is not too deep, at its subfolders. */
     function visit(dir: string, depth: number): void {
         for (const kind of kindsIn(dir)) {
             const label = path.relative(root, dir) || '.';
@@ -179,7 +179,7 @@ export function detectParts(root: string): ProjectPart[] {
     return parts;
 }
 
-/** Nombre legible de cada tipo de proyecto. */
+/** Readable name of each kind of project. */
 export const kindNames: Record<PartKind, string> = {
     node: 'JavaScript',
     python: 'Python',
@@ -190,9 +190,9 @@ export const kindNames: Record<PartKind, string> = {
 };
 
 /**
- * Ejecuta un comando y devuelve su salida (para pasos que necesitan leer el resultado).
- * @param command comando de consola
- * @param cwd carpeta donde se ejecuta
+ * Runs a command and returns its output (for steps that need to read the result).
+ * @param command shell command
+ * @param cwd folder it runs in
  */
 function run(command: string, cwd: string): Promise<string> {
     return new Promise(function (resolve, reject) {
@@ -213,9 +213,9 @@ function run(command: string, cwd: string): Promise<string> {
 }
 
 /**
- * Resume una lista de cambios en una línea, p. ej. "react ^18.2.0 → ^19.1.0, vite …".
- * @param changes nombre → nueva versión
- * @param max cuántos mostrar como mucho
+ * Summarizes a list of changes in one line, e.g. "react ^18.2.0 → ^19.1.0, vite …".
+ * @param changes name → new version
+ * @param max how many to show at most
  */
 function summarize(changes: Array<[string, string]>, max = 6): string {
     const shown: string[] = [];
@@ -226,18 +226,18 @@ function summarize(changes: Array<[string, string]>, max = 6): string {
 }
 
 /**
- * Pasos para un proyecto Node: ver qué se puede actualizar, actualizar package.json
- * con npm-check-updates e instalar.
- * @param part parte del proyecto
- * @param mode safe o latest
+ * Steps for a Node project: see what can be updated, update package.json
+ * with npm-check-updates and install.
+ * @param part part of the project
+ * @param mode safe or latest
  */
 function nodeSteps(part: ProjectPart, mode: UpdateMode): Step[] {
     const pm = packageManager(part.pm ?? 'npm');
     const fw = part.framework;
-    // "minor" = solo versiones compatibles; "latest" = también las mayores.
+    // "minor" = compatible versions only; "latest" = majors too.
     const target = mode === 'safe' ? 'minor' : 'latest';
-    // El framework y lo que va ligado a él lo actualiza su herramienta oficial, no ncu.
-    // Angular y Expo siempre (sus versiones van ligadas); el resto solo al subir de versión mayor.
+    // ! The framework and what is tied to it are updated by its official tool, not ncu.
+    // ! Angular and Expo always (their versions are tied); the rest only on a major upgrade.
     const guarded = fw === 'angular' || fw === 'expo' || (fw && mode === 'latest');
     const reject = fw && guarded ? ` --reject "${frameworkPackages[fw]}"` : '';
     const ncu = `npx -y npm-check-updates@latest --target ${target}${reject}`;
@@ -247,7 +247,7 @@ function nodeSteps(part: ProjectPart, mode: UpdateMode): Step[] {
             title: `Checking ${part.label} for updates`,
             async run(log: Logger) {
                 const json = await run(`${ncu} --jsonUpgraded`, part.dir);
-                // ncu puede escribir avisos antes del JSON; si no hay llaves, no hay nada que actualizar.
+                // ? ncu may print warnings before the JSON; no braces means nothing to update.
                 const start = json.indexOf('{');
                 const upgraded: Record<string, string> = JSON.parse(start >= 0 ? json.slice(start) : '{}');
                 const changes = Object.entries(upgraded);
@@ -273,21 +273,21 @@ function nodeSteps(part: ProjectPart, mode: UpdateMode): Step[] {
 }
 
 /**
- * Pasos que actualizan el framework con su herramienta oficial (la que también adapta el código).
- * @param part parte del proyecto
- * @param fw framework detectado
- * @param mode safe o latest
+ * Steps that update the framework with its official tool (the one that also migrates the code).
+ * @param part part of the project
+ * @param fw detected framework
+ * @param mode safe or latest
  */
 function frameworkSteps(part: ProjectPart, fw: Framework, mode: UpdateMode): Step[] {
     const pm = packageManager(part.pm ?? 'npm');
     const latest = mode === 'latest';
-    /** Paso de comando del framework (si falla, se avisa y se sigue: el resto ya está actualizado). */
+    /** Framework command step (if it fails, warn and go on: everything else is already updated). */
     function step(title: string, command: string): Step {
         return { kind: 'command', title: `${title} in ${part.label}`, command, cwd: part.dir, optional: true };
     }
     switch (fw) {
         case 'angular':
-            // ng update sube una versión mayor cada vez y modifica el código si hace falta.
+            // ? ng update raises one major version at a time and changes the code if needed.
             return [
                 step(
                     latest ? 'Migrating Angular to the next major (ng update)' : 'Updating Angular within its version',
@@ -297,7 +297,7 @@ function frameworkSteps(part: ProjectPart, fw: Framework, mode: UpdateMode): Ste
         case 'expo':
             return [
                 ...(latest ? [step('Updating Expo SDK', pm.bin('expo', ['install', 'expo@latest']))] : []),
-                // Deja cada librería en la versión que el SDK de Expo espera.
+                // * Puts each library on the version the Expo SDK expects.
                 step('Aligning packages with the Expo SDK', pm.bin('expo', ['install', '--fix'])),
             ];
         case 'next':
@@ -312,8 +312,8 @@ function frameworkSteps(part: ProjectPart, fw: Framework, mode: UpdateMode): Ste
 }
 
 /**
- * Python del entorno virtual de una carpeta.
- * @param dir carpeta del proyecto
+ * Python of a folder's virtual environment.
+ * @param dir project folder
  */
 function venvPythonIn(dir: string): string {
     return process.platform === 'win32'
@@ -322,10 +322,10 @@ function venvPythonIn(dir: string): string {
 }
 
 /**
- * Paso para un proyecto Python: actualiza los paquetes desactualizados del .venv
- * (en modo seguro, solo si no cambia la versión mayor) y regenera requirements.txt.
- * @param part parte del proyecto
- * @param mode safe o latest
+ * Step for a Python project: updates the outdated packages of the .venv
+ * (in safe mode, only if the major version does not change) and regenerates requirements.txt.
+ * @param part part of the project
+ * @param mode safe or latest
  */
 function pythonSteps(part: ProjectPart, mode: UpdateMode): Step[] {
     const python = `"${venvPythonIn(part.dir)}"`;
@@ -373,12 +373,12 @@ function pythonSteps(part: ProjectPart, mode: UpdateMode): Step[] {
 }
 
 /**
- * Pasos de actualización de una parte del proyecto.
- * @param part parte del proyecto
- * @param mode safe o latest
+ * Update steps of one part of the project.
+ * @param part part of the project
+ * @param mode safe or latest
  */
 function partSteps(part: ProjectPart, mode: UpdateMode): Step[] {
-    /** Paso que ejecuta un comando en la carpeta de la parte. */
+    /** Step that runs a command in the part's folder. */
     function command(title: string, cmd: string): Step {
         return { kind: 'command', title: `${title} in ${part.label}`, command: cmd, cwd: part.dir };
     }
@@ -388,7 +388,7 @@ function partSteps(part: ProjectPart, mode: UpdateMode): Step[] {
         case 'python':
             return pythonSteps(part, mode);
         case 'composer':
-            // Composer respeta las restricciones de composer.json (^): ya es una actualización segura.
+            // ? Composer respects the composer.json constraints (^): it is already a safe update.
             return [command('Updating PHP packages', 'composer update --no-interaction')];
         case 'cargo':
             return [command('Updating Rust crates', 'cargo update')];
@@ -408,9 +408,9 @@ function partSteps(part: ProjectPart, mode: UpdateMode): Step[] {
 }
 
 /**
- * ¿El package.json tiene este script?
- * @param dir carpeta del proyecto
- * @param script nombre del script
+ * Whether package.json has this script.
+ * @param dir project folder
+ * @param script script name
  */
 function hasScript(dir: string, script: string): boolean {
     try {
@@ -420,20 +420,20 @@ function hasScript(dir: string, script: string): boolean {
     }
 }
 
-/** Opciones del comando Update Project. */
+/** Options of the Update Project command. */
 export interface UpdateOptions {
     root: string;
     mode: UpdateMode;
-    /** Hacer un commit de seguridad antes de actualizar. */
+    /** Make a safety commit before updating. */
     checkpoint: boolean;
-    /** Comprobar después que el proyecto sigue compilando. */
+    /** Check afterwards that the project still builds. */
     verify: boolean;
 }
 
 /**
- * Todos los pasos de la actualización.
- * @param parts partes del proyecto a actualizar
- * @param opts modo y opciones
+ * Every step of the update.
+ * @param parts parts of the project to update
+ * @param opts mode and options
  */
 export function updateSteps(parts: ProjectPart[], opts: UpdateOptions): Step[] {
     const steps: Step[] = [];
@@ -441,7 +441,7 @@ export function updateSteps(parts: ProjectPart[], opts: UpdateOptions): Step[] {
         steps.push({
             kind: 'command',
             title: 'Saving a Git checkpoint',
-            // Si no hay cambios pendientes, el último commit ya es el punto de vuelta.
+            // ? With no pending changes, the last commit already is the restore point.
             command:
                 'git add -A && git commit -q -m "Checkpoint before updating dependencies" || echo nothing to commit',
             cwd: opts.root,

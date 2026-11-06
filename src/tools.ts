@@ -1,29 +1,29 @@
 /**
  * tools.ts
  * ────────
- * Todo lo relacionado con los programas instalados en el ordenador:
- *  - Detectar si están Node.js, Python, PHP, Git… y qué versión tienen.
- *  - Actualizar el PATH en caliente después de instalar algo (sin reiniciar VS Code).
- *  - Saber cómo instalar cada herramienta (winget en Windows, Homebrew en macOS, php.new…).
- *  - Construir los comandos de cada gestor de paquetes (npm, pnpm o bun).
+ * Everything about the programs installed on the computer:
+ *  - Detect whether Node.js, Python, PHP, Git… are there and which version they have.
+ *  - Refresh the PATH on the fly after installing something (without restarting VS Code).
+ *  - Know how to install each tool (winget on Windows, Homebrew on macOS, php.new…).
+ *  - Build the commands of each package manager (npm, pnpm or bun).
  */
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-/** Herramientas que DevStarter sabe detectar e instalar. */
+/** Tools DevStarter knows how to detect and install. */
 export type ToolId =
     'node' | 'git' | 'gh' | 'python' | 'php' | 'composer' | 'flutter' | 'go' | 'dotnet' | 'cargo' | 'java';
 
-/** Resultado de detectar una herramienta. */
+/** Result of detecting a tool. */
 export interface ToolInfo {
     id: ToolId;
     name: string;
     installUrl: string;
-    /** Comando con el que se ejecuta (p. ej. `py` en vez de `python` en algunos Windows). */
+    /** Command used to run it (e.g. `py` instead of `python` on some Windows machines). */
     command?: string;
-    /** Versión instalada; undefined si no está instalada. */
+    /** Installed version; undefined if not installed. */
     version?: string;
 }
 
@@ -31,7 +31,7 @@ const isWindows = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
 const home = os.homedir();
 
-/** Datos fijos de cada herramienta: nombre, web de descarga y comandos a probar. */
+/** Fixed data of each tool: name, download page and commands to try. */
 interface ToolMeta {
     name: string;
     installUrl: string;
@@ -56,29 +56,29 @@ const toolMeta: Record<ToolId, ToolMeta> = {
     java: { name: 'Java (JDK)', installUrl: 'https://adoptium.net', candidates: ['java'] },
 };
 
-/** Todas las herramientas, en el orden en que se muestran. */
+/** Every tool, in display order. */
 export const allToolIds = Object.keys(toolMeta) as ToolId[];
 
-/** Versión mínima de Node.js que piden las versiones actuales de Vite, Next.js y Astro. */
+/** Minimum Node.js version required by current Vite, Next.js and Astro. */
 export const minNodeVersion = '20.19.0';
 
 /**
- * Comando para pedir la versión de un programa. Go no entiende `--version`.
- * @param command nombre del programa
+ * Command that asks a program for its version. Go does not understand `--version`.
+ * @param command program name
  */
 function versionCommand(command: string): string {
     return command === 'go' ? 'go version' : `${command} --version`;
 }
 
 /**
- * Ejecuta `<comando> --version` y devuelve la primera línea, o undefined si falla.
- * @param command programa a probar
- * @param timeout milisegundos antes de rendirse
+ * Runs `<command> --version` and returns the first line, or undefined if it fails.
+ * @param command program to try
+ * @param timeout milliseconds before giving up
  */
 function readVersion(command: string, timeout = 20000): Promise<string | undefined> {
     return new Promise(function (resolve) {
-        // Desde la carpeta personal, no la del proyecto abierto: pnpm (y otros) cambian de versión
-        // según el campo "packageManager" del proyecto y darían un número que no es el instalado.
+        // ! From the home folder, not the open project: pnpm (and others) switch versions
+        // ! according to the project's "packageManager" field and would report a version that is not the installed one.
         const options = { timeout, windowsHide: true, env: process.env, cwd: home };
         cp.exec(versionCommand(command), options, function (err, stdout, stderr) {
             const text = (stdout || stderr || '').trim();
@@ -88,24 +88,24 @@ function readVersion(command: string, timeout = 20000): Promise<string | undefin
 }
 
 /**
- * Extrae "1.2.3" de textos como "v1.2.3" o "Python 3.12.1".
- * @param text salida de `--version`
+ * Extracts "1.2.3" from texts like "v1.2.3" or "Python 3.12.1".
+ * @param text output of `--version`
  */
 function extractVersion(text: string): string {
     return text.match(/\d+\.\d+(\.\d+)?/)?.[0] ?? text;
 }
 
-/** Caché de detecciones, para no lanzar los mismos procesos varias veces. */
+/** Detection cache, so the same processes are not launched several times. */
 const cache = new Map<ToolId, Promise<ToolInfo>>();
 
 /**
- * Prueba los comandos posibles de una herramienta hasta encontrar uno que funcione.
- * @param id herramienta a detectar
+ * Tries the possible commands of a tool until one works.
+ * @param id tool to detect
  */
 async function probeTool(id: ToolId): Promise<ToolInfo> {
     const meta = toolMeta[id];
     for (const candidate of meta.candidates) {
-        // Flutter puede tardar bastante la primera vez que se ejecuta.
+        // ? Flutter can take quite a while the first time it runs.
         const raw = await readVersion(candidate, id === 'flutter' ? 60000 : 20000);
         if (raw) {
             return {
@@ -121,8 +121,8 @@ async function probeTool(id: ToolId): Promise<ToolInfo> {
 }
 
 /**
- * Detecta una herramienta (con caché).
- * @param id herramienta a detectar
+ * Detects a tool (cached).
+ * @param id tool to detect
  */
 export function detectTool(id: ToolId): Promise<ToolInfo> {
     let pending = cache.get(id);
@@ -133,28 +133,28 @@ export function detectTool(id: ToolId): Promise<ToolInfo> {
     return pending;
 }
 
-/** Detecta todas las herramientas a la vez (para el comando "Check My Tools"). */
+/** Detects every tool at once (for the "Check My Tools" command). */
 export function detectAllTools(): Promise<ToolInfo[]> {
     return Promise.all(allToolIds.map(detectTool));
 }
 
 /**
- * Nombre legible de una herramienta.
- * @param id herramienta
+ * Readable name of a tool.
+ * @param id tool
  */
 export function toolName(id: ToolId): string {
     return toolMeta[id].name;
 }
 
-/** Olvida lo detectado, por ejemplo después de instalar algo. */
+/** Forgets what was detected, e.g. after installing something. */
 export function clearToolCache(): void {
     cache.clear();
     pmCache = undefined;
 }
 
 /**
- * Compara versiones "a.b.c".
- * @returns negativo si a < b, 0 si son iguales, positivo si a > b
+ * Compares "a.b.c" versions.
+ * @returns negative if a < b, 0 if equal, positive if a > b
  */
 export function compareVersions(a: string, b: string): number {
     const pa = a.split('.').map(Number);
@@ -170,11 +170,11 @@ export function compareVersions(a: string, b: string): number {
 
 // ─── PATH ───────────────────────────────────────────────────────────
 //
-// Cuando se instala algo, el instalador añade su carpeta al PATH del sistema,
-// pero VS Code (y esta extensión) siguen con el PATH antiguo hasta reiniciarse.
-// Estas funciones lo actualizan en caliente para poder usar la herramienta al momento.
+// * When something is installed, the installer adds its folder to the system PATH,
+// * but VS Code (and this extension) keep the old PATH until they restart.
+// * These functions refresh it on the fly so the tool can be used right away.
 
-/** Carpetas donde suelen acabar las herramientas aunque VS Code aún no las vea. */
+/** Folders where tools usually end up even if VS Code cannot see them yet. */
 function knownToolDirs(): string[] {
     const local = process.env.LOCALAPPDATA ?? path.join(home, 'AppData', 'Local');
     const roaming = process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming');
@@ -206,8 +206,8 @@ function knownToolDirs(): string[] {
 }
 
 /**
- * Añade carpetas al PATH del proceso, sin repetir las que ya estén.
- * @param extra carpetas a añadir
+ * Adds folders to the process PATH, skipping those already there.
+ * @param extra folders to add
  */
 function mergePath(extra: string[]): void {
     const current = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean);
@@ -221,12 +221,12 @@ function mergePath(extra: string[]): void {
     process.env.PATH = current.join(path.delimiter);
 }
 
-/** Pasa un texto a minúsculas (para comparar rutas sin distinguir mayúsculas). */
+/** Lowercases a text (to compare paths case-insensitively). */
 function toLower(s: string): string {
     return s.toLowerCase();
 }
 
-/** Lee el PATH actual de Windows desde el registro (sistema + usuario). */
+/** Reads the current Windows PATH from the registry (system + user). */
 function readWindowsPath(): Promise<string> {
     const script =
         "[Environment]::GetEnvironmentVariable('Path','Machine'); [Environment]::GetEnvironmentVariable('Path','User')";
@@ -241,12 +241,12 @@ function readWindowsPath(): Promise<string> {
     });
 }
 
-/** PATH que tenía VS Code al arrancar (para saber qué carpetas se han añadido después). */
+/** PATH VS Code had at startup (to know which folders were added later). */
 const startupPath = (process.env.PATH ?? '').split(path.delimiter);
 
 /**
- * Carpetas que refreshPath() ha añadido al PATH (herramientas instaladas con VS Code abierto).
- * Sirven para dárselas también a las terminales nuevas.
+ * Folders refreshPath() added to the PATH (tools installed while VS Code was open).
+ * They are also handed to new terminals.
  */
 export function addedPathDirs(): string[] {
     const before = new Set(startupPath.map(toLower));
@@ -259,14 +259,14 @@ export function addedPathDirs(): string[] {
     return added;
 }
 
-/** Momento de la última lectura del PATH (para no repetirla sin necesidad). */
+/** When the PATH was last read (to avoid re-reading it needlessly). */
 let lastPathRefresh = 0;
 
 /**
- * Añade al PATH del proceso las carpetas conocidas y, en Windows, el PATH actual del registro.
- * Leer el registro lanza PowerShell (~1 s), así que se reutiliza el resultado durante 20 s,
- * salvo que se pida `force` (justo después de instalar algo).
- * @param force leer de nuevo aunque sea reciente
+ * Adds the known folders and, on Windows, the current registry PATH to the process PATH.
+ * ? Reading the registry launches PowerShell (~1 s), so the result is reused for 20 s
+ * unless `force` is passed (right after installing something).
+ * @param force read again even if it is recent
  */
 export async function refreshPath(force = false): Promise<void> {
     if (!force && Date.now() - lastPathRefresh < 20000) {
@@ -285,14 +285,14 @@ export async function refreshPath(force = false): Promise<void> {
     mergePath(extra);
 }
 
-// ─── Instaladores automáticos ───────────────────────────────────────
+// ─── Automatic installers ───────────────────────────────────────────
 
-/** Cómo instalar una herramienta. */
+/** How to install a tool. */
 export interface Installer {
-    /** Lo que se muestra en el terminal mientras se instala. */
+    /** What the terminal shows while it installs. */
     title: string;
     command: string;
-    /** Códigos de salida (además del 0) que no son un error. */
+    /** Exit codes (besides 0) that are not an error. */
     okExitCodes?: number[];
 }
 
@@ -300,17 +300,17 @@ let wingetAvailable: Promise<boolean> | undefined;
 let brewAvailable: Promise<boolean> | undefined;
 
 /**
- * ¿Existe este comando en el sistema?
- * @param command programa a comprobar
+ * Whether this command exists on the system.
+ * @param command program to check
  */
 async function hasCommand(command: string): Promise<boolean> {
     return !!(await readVersion(command, 10000));
 }
 
 /**
- * Instalación con winget (viene con Windows 11 y Windows 10 actualizado).
- * @param id identificador del paquete en winget
- * @param name nombre legible
+ * Install with winget (ships with Windows 11 and updated Windows 10).
+ * @param id winget package id
+ * @param name readable name
  */
 function winget(id: string, name: string): Installer {
     return {
@@ -319,7 +319,7 @@ function winget(id: string, name: string): Installer {
     };
 }
 
-/** Instalador oficial de Laravel: trae PHP, Composer y el instalador de Laravel. */
+/** Official Laravel installer: brings PHP, Composer and the Laravel installer. */
 function phpNew(): Installer {
     const version = '8.4';
     const windowsScript =
@@ -333,7 +333,7 @@ function phpNew(): Installer {
     };
 }
 
-/** Paquetes de winget para cada herramienta. */
+/** winget packages for each tool. */
 const wingetIds: Partial<Record<ToolId, string>> = {
     node: 'OpenJS.NodeJS.LTS',
     git: 'Git.Git',
@@ -345,7 +345,7 @@ const wingetIds: Partial<Record<ToolId, string>> = {
     java: 'EclipseAdoptium.Temurin.21.JDK',
 };
 
-/** Fórmulas de Homebrew para cada herramienta. */
+/** Homebrew formulas for each tool. */
 const brewFormulas: Partial<Record<ToolId, string>> = {
     node: 'node',
     git: 'git',
@@ -358,11 +358,11 @@ const brewFormulas: Partial<Record<ToolId, string>> = {
 };
 
 /**
- * Instalar o actualizar con el gestor del sistema: winget en Windows, Homebrew en macOS.
- * En Linux no hay uno común, así que devuelve undefined.
- * @param id herramienta
- * @param action instalar o actualizar
- * @param version versión instalada (Python: decide qué paquete de winget usar)
+ * Install or update with the system package manager: winget on Windows, Homebrew on macOS.
+ * Linux has no common one, so it returns undefined.
+ * @param id tool
+ * @param action install or update
+ * @param version installed version (Python: decides which winget package to use)
  */
 async function viaSystemManager(
     id: ToolId,
@@ -371,7 +371,7 @@ async function viaSystemManager(
 ): Promise<Installer | undefined> {
     if (isWindows) {
         wingetAvailable ??= hasCommand('winget');
-        // Python: hay un paquete por cada versión (Python.Python.3.13, 3.14…); se actualiza la que se usa.
+        // ! Python: there is one package per version (Python.Python.3.13, 3.14…); the one in use is updated.
         const pythonMinor = action === 'upgrade' && id === 'python' ? version?.match(/^(\d+\.\d+)/)?.[1] : undefined;
         const wingetId = pythonMinor ? `Python.Python.${pythonMinor}` : wingetIds[id];
         if (!(await wingetAvailable) || !wingetId) {
@@ -387,13 +387,13 @@ async function viaSystemManager(
             return { title: `${verb} ${toolName(id)} with Homebrew`, command: `brew ${action} ${formula}` };
         }
     }
-    // En Linux cada distribución usa su gestor; mejor que la persona siga la guía oficial.
+    // ? Every Linux distribution has its own manager; better to follow the official guide.
     return undefined;
 }
 
 /**
- * Devuelve cómo instalar una herramienta en este sistema, o undefined si hay que hacerlo a mano.
- * @param id herramienta a instalar
+ * Returns how to install a tool on this system, or undefined if it must be done by hand.
+ * @param id tool to install
  */
 export async function installerFor(id: ToolId): Promise<Installer | undefined> {
     if (id === 'php' || id === 'composer') {
@@ -408,45 +408,45 @@ export async function installerFor(id: ToolId): Promise<Installer | undefined> {
     return viaSystemManager(id, 'install');
 }
 
-// ─── Gestores de paquetes ───────────────────────────────────────────
+// ─── Package managers ───────────────────────────────────────────────
 
 export type PackageManagerId = 'npm' | 'pnpm' | 'bun';
 
-/** Comandos de un gestor de paquetes de JavaScript. */
+/** Commands of a JavaScript package manager. */
 export interface PackageManager {
     id: PackageManagerId;
-    /** Versión instalada; undefined si no está instalado. */
+    /** Installed version; undefined if not installed. */
     version?: string;
-    /** Ejecuta un paquete sin instalarlo de forma global (npx / pnpm dlx / bunx). */
+    /** Runs a package without installing it globally (npx / pnpm dlx / bunx). */
     exec(spec: string, args: string[]): string;
-    /** Instala las dependencias del package.json. */
+    /** Installs the dependencies from package.json. */
     install(): string;
-    /** Añade paquetes (`dev` = solo para desarrollo). */
+    /** Adds packages (`dev` = development only). */
     add(packages: string[], dev?: boolean): string;
-    /** Ejecuta un script del package.json. */
+    /** Runs a package.json script. */
     run(script: string): string;
-    /** Ejecuta un binario de node_modules del proyecto. */
+    /** Runs a binary from the project's node_modules. */
     bin(name: string, args: string[]): string;
 }
 
 /**
- * Junta argumentos con espacios, con un espacio delante si hay alguno.
- * @param args argumentos del comando
+ * Joins arguments with spaces, with a leading space if there are any.
+ * @param args command arguments
  */
 function joinArgs(args: string[]): string {
     return args.length ? ' ' + args.join(' ') : '';
 }
 
-/** Cómo se escribe cada comando en un gestor de paquetes (solo cambian los textos). */
+/** How each command is spelled in each package manager (only the texts change). */
 interface PackageManagerSyntax {
-    /** Ejecutar un paquete sin instalarlo (npx / pnpm dlx / bunx). */
+    /** Run a package without installing it (npx / pnpm dlx / bunx). */
     exec: string;
     install: string;
     add: string;
-    /** Opción de "dependencia de desarrollo". */
+    /** "Development dependency" flag. */
     dev: string;
     run: string;
-    /** Ejecutar un binario de node_modules. */
+    /** Run a binary from node_modules. */
     bin: string;
 }
 
@@ -457,9 +457,9 @@ const packageManagerSyntax: Record<PackageManagerId, PackageManagerSyntax> = {
 };
 
 /**
- * Crea el objeto con los comandos del gestor de paquetes indicado.
- * @param id npm, pnpm o bun
- * @param version versión instalada (si la hay)
+ * Builds the object with the commands of the given package manager.
+ * @param id npm, pnpm or bun
+ * @param version installed version (if any)
  */
 export function packageManager(id: PackageManagerId, version?: string): PackageManager {
     const x = packageManagerSyntax[id];
@@ -485,8 +485,8 @@ export function packageManager(id: PackageManagerId, version?: string): PackageM
 }
 
 /**
- * Cómo instalar pnpm o bun si no están (npm viene con Node.js).
- * @param id gestor a instalar
+ * How to install pnpm or bun if they are missing (npm comes with Node.js).
+ * @param id package manager to install
  */
 export function packageManagerInstaller(id: PackageManagerId): Installer | undefined {
     if (id === 'pnpm') {
@@ -508,7 +508,7 @@ export function packageManagerInstaller(id: PackageManagerId): Installer | undef
 
 let pmCache: Promise<PackageManager[]> | undefined;
 
-/** Detecta los tres gestores de paquetes y su versión (si están instalados). */
+/** Detects the three package managers and their version (if installed). */
 async function probePackageManagers(): Promise<PackageManager[]> {
     const ids: PackageManagerId[] = ['npm', 'pnpm', 'bun'];
     const versions = await Promise.all(ids.map(readVersionOf));
@@ -520,24 +520,24 @@ async function probePackageManagers(): Promise<PackageManager[]> {
     return result;
 }
 
-/** Versión de un comando con el tiempo de espera por defecto (para usar con `map`). */
+/** Version of a command with the default timeout (to use with `map`). */
 function readVersionOf(command: string): Promise<string | undefined> {
     return readVersion(command);
 }
 
-/** Los tres gestores de paquetes, con versión si están instalados (npm primero). */
+/** The three package managers, with a version if installed (npm first). */
 export function detectPackageManagers(): Promise<PackageManager[]> {
     pmCache ??= probePackageManagers();
     return pmCache;
 }
 
-// ─── Actualizadores ─────────────────────────────────────────────────
+// ─── Updaters ───────────────────────────────────────────────────────
 
 /**
- * Actualización con winget. Si winget no tiene nada más nuevo o no es quien la instaló,
- * termina con un código especial que toolupdate.ts explica (y que NO es un error).
- * @param id identificador del paquete en winget
- * @param name nombre legible
+ * Update with winget. If winget has nothing newer or did not install it,
+ * it ends with a special code that toolupdate.ts explains (and that is NOT an error).
+ * @param id winget package id
+ * @param name readable name
  */
 function wingetUpgrade(id: string, name: string): Installer {
     const flags = '-e --silent --disable-interactivity --accept-package-agreements --accept-source-agreements';
@@ -548,12 +548,12 @@ function wingetUpgrade(id: string, name: string): Installer {
 }
 
 /**
- * Cómo actualizar una herramienta ya instalada, o undefined si no se sabe hacerlo solo.
- * @param id herramienta
- * @param version versión instalada (Python: decide qué paquete de winget actualizar)
+ * How to update an installed tool, or undefined if it cannot be done automatically.
+ * @param id tool
+ * @param version installed version (Python: decides which winget package to update)
  */
 export async function updaterFor(id: ToolId, version?: string): Promise<Installer | undefined> {
-    // Herramientas que se actualizan a sí mismas, en cualquier sistema.
+    // * Tools that update themselves, on any system.
     const selfUpdaters: Partial<Record<ToolId, string>> = {
         composer: 'composer self-update',
         cargo: 'rustup update',
@@ -567,8 +567,8 @@ export async function updaterFor(id: ToolId, version?: string): Promise<Installe
 }
 
 /**
- * Cómo actualizar npm, pnpm o bun.
- * @param id gestor de paquetes
+ * How to update npm, pnpm or bun.
+ * @param id package manager
  */
 export function packageManagerUpdater(id: PackageManagerId): Installer {
     switch (id) {
@@ -582,10 +582,10 @@ export function packageManagerUpdater(id: PackageManagerId): Installer {
 }
 
 /**
- * De dónde viene lo que va a ejecutar un instalador, para decírselo a la persona antes de
- * pedirle permiso. Se deduce del comando: las direcciones de descarga que contiene o, si no
- * hay ninguna, el programa que lo ejecuta (winget, brew, npm…).
- * @param installer instalador
+ * Where what an installer runs comes from, to tell the person before asking for
+ * permission. Deduced from the command: the download addresses it contains or, if there
+ * are none, the program that runs it (winget, brew, npm…).
+ * @param installer installer
  */
 export function installSource(installer: Installer): string {
     const hosts = new Set<string>();

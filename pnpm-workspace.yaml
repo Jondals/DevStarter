@@ -1,7 +1,7 @@
 allowBuilds:
   esbuild: true
-  # No se necesitan: los tokens de publicacion van por variable de entorno (no por el almacen
-  # de credenciales) y no se verifican firmas.
+  # ? Not needed: publishing tokens come from environment variables (not from the OS
+  # ? credential store) and no signatures are verified.
   keytar: false
   '@vscode/vsce-sign': false
 overrides:

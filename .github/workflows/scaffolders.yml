@@ -1,6 +1,6 @@
-# Cada lunes crea proyectos reales con las últimas versiones de los generadores
-# (create-vite, create-next-app, sv, @nestjs/cli, @angular/cli…). Si alguno cambia
-# y se rompe, este workflow falla y GitHub avisa por correo antes que los usuarios.
+# Every Monday, creates real projects with the latest versions of the project generators
+# (create-vite, create-next-app, sv, @nestjs/cli, @angular/cli…). If one of them changes
+# and breaks, this workflow fails and GitHub sends an email before users notice.
 name: Scaffolders (weekly)
 
 on:

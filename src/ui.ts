@@ -1,21 +1,21 @@
 /**
  * ui.ts
  * ─────
- * Utilidades para "pintar" en el terminal con códigos ANSI: colores, degradados,
- * el efecto de brillo que recorre el texto, cajas, la barra de progreso y el banner.
+ * Helpers to "paint" in the terminal with ANSI codes: colors, gradients,
+ * the shine effect that runs across the text, boxes, the progress bar and the banner.
  *
- * Un código ANSI es una secuencia que empieza por ESC + "[" y que el terminal
- * interpreta en vez de mostrarla. Por ejemplo "\x1b[1m" activa la negrita.
- * Aquí no se escribe nada en pantalla: solo se construyen textos que luego
- * escribe terminal.ts.
+ * An ANSI code is a sequence starting with ESC + "[" that the terminal interprets
+ * instead of showing it. For example "\x1b[1m" turns bold on.
+ * ? Nothing is written to the screen here: this only builds strings that
+ * terminal.ts writes later.
  */
 
 const ESC = '\x1b[';
 
-/** Un color como [rojo, verde, azul], cada uno de 0 a 255. */
+/** A color as [red, green, blue], each from 0 to 255. */
 type RGB = [number, number, number];
 
-/** Paleta de colores de DevStarter: turquesa, índigo y fucsia. */
+/** DevStarter's color palette: teal, indigo and fuchsia. */
 export const palette = {
     teal: '#2dd4bf',
     sky: '#38bdf8',
@@ -29,12 +29,12 @@ export const palette = {
     dim: '#475569',
 };
 
-/** Degradado de la marca, usado en el banner, títulos y barra de progreso. */
+/** Brand gradient, used in the banner, titles and progress bar. */
 export const brandGradient = [palette.teal, palette.indigo, palette.fuchsia];
 
 /**
- * Convierte "#rrggbb" en [r, g, b].
- * @param hex color en hexadecimal
+ * Turns "#rrggbb" into [r, g, b].
+ * @param hex color in hexadecimal
  */
 function hexToRgb(hex: string): RGB {
     const n = parseInt(hex.replace('#', ''), 16);
@@ -42,32 +42,32 @@ function hexToRgb(hex: string): RGB {
 }
 
 /**
- * Código ANSI "truecolor" (24 bits) que cambia el color del texto.
- * @param rgb color a usar
+ * "Truecolor" (24-bit) ANSI code that changes the text color.
+ * @param rgb color to use
  */
 function fg(rgb: RGB): string {
     return `${ESC}38;2;${rgb[0]};${rgb[1]};${rgb[2]}m`;
 }
 
-/** Funciones de estilo: cada una envuelve el texto y después restaura el estilo normal. */
+/** Style functions: each wraps the text and then restores the normal style. */
 export const style = {
-    /** Texto en negrita. */
+    /** Bold text. */
     bold: function (s: string): string {
         return `${ESC}1m${s}${ESC}22m`;
     },
-    /** Texto atenuado. */
+    /** Dimmed text. */
     dim: function (s: string): string {
         return `${ESC}2m${s}${ESC}22m`;
     },
-    /** Texto en cursiva. */
+    /** Italic text. */
     italic: function (s: string): string {
         return `${ESC}3m${s}${ESC}23m`;
     },
-    /** Texto subrayado. */
+    /** Underlined text. */
     underline: function (s: string): string {
         return `${ESC}4m${s}${ESC}24m`;
     },
-    /** Texto del color indicado en hexadecimal. */
+    /** Text in the given hex color. */
     color: function (hex: string, s: string): string {
         return `${fg(hexToRgb(hex))}${s}${ESC}39m`;
     },
@@ -94,44 +94,44 @@ export const style = {
     },
 };
 
-/** Movimientos de cursor y borrado de pantalla. */
+/** Cursor movements and screen clearing. */
 export const cursor = {
     hide: `${ESC}?25l`,
     show: `${ESC}?25h`,
-    /** Vuelve al principio de la línea y borra desde ahí hasta el final de la pantalla. */
+    /** Goes back to the start of the line and clears from there to the end of the screen. */
     clearBelow: `\r${ESC}J`,
-    /** Sube el cursor `n` líneas. */
+    /** Moves the cursor up `n` lines. */
     up: function (n = 1): string {
         return `${ESC}${n}A`;
     },
 };
 
-/** Símbolos usados en el terminal (todos ocupan una sola columna). */
+/** Symbols used in the terminal (all of them take a single column). */
 export const symbols = {
-    /** Paso terminado (su color indica el resultado). */
+    /** Finished step (its color tells the result). */
     done: '◆',
-    /** Paso fallido. */
+    /** Failed step. */
     fail: '✗',
-    /** Aviso. */
+    /** Warning. */
     warn: '▲',
-    /** Rama para los detalles debajo de un paso. */
+    /** Branch for the details under a step. */
     branch: '└',
-    /** Logo de DevStarter en títulos. */
+    /** DevStarter logo in titles. */
     logo: '◈',
-    /** Flecha para comandos sugeridos. */
+    /** Arrow for suggested commands. */
     arrow: '❯',
-    /** Barra vertical para los logs en directo. */
+    /** Vertical bar for live logs. */
     pipe: '│',
 };
 
-/** Fotogramas del spinner: un arco que gira. */
+/** Spinner frames: a spinning arc. */
 export const spinnerFrames = ['◜', '◠', '◝', '◞', '◡', '◟'];
 
 /**
- * Mezcla dos colores.
- * @param a color inicial
- * @param b color final
- * @param t cuánto de `b` (0 = todo `a`, 1 = todo `b`)
+ * Mixes two colors.
+ * @param a start color
+ * @param b end color
+ * @param t how much of `b` (0 = all `a`, 1 = all `b`)
  */
 function mix(a: RGB, b: RGB, t: number): RGB {
     return [
@@ -142,9 +142,9 @@ function mix(a: RGB, b: RGB, t: number): RGB {
 }
 
 /**
- * Color en la posición `t` (0..1) de un degradado con varias paradas.
- * @param stops colores del degradado
- * @param t posición dentro del degradado
+ * Color at position `t` (0..1) of a gradient with several stops.
+ * @param stops colors of the gradient
+ * @param t position inside the gradient
  */
 function gradientAt(stops: RGB[], t: number): RGB {
     if (stops.length === 1) {
@@ -157,9 +157,9 @@ function gradientAt(stops: RGB[], t: number): RGB {
 }
 
 /**
- * "Ida y vuelta": convierte cualquier número en un valor 0..1 que sube y baja.
- * Sirve para desplazar un degradado sin que el color salte de golpe al principio.
- * @param t posición (puede ser mayor que 1)
+ * "Ping-pong": turns any number into a 0..1 value that goes up and down.
+ * Used to shift a gradient without the color jumping back at the start.
+ * @param t position (may be greater than 1)
  */
 function pingPong(t: number): number {
     const p = ((t % 2) + 2) % 2;
@@ -167,10 +167,10 @@ function pingPong(t: number): number {
 }
 
 /**
- * Pinta cada carácter del texto con un color del degradado.
- * @param text texto a colorear
- * @param stops colores del degradado
- * @param offset desplazamiento del degradado (útil para animaciones)
+ * Paints each character of the text with a color from the gradient.
+ * @param text text to color
+ * @param stops colors of the gradient
+ * @param offset gradient shift (useful for animations)
  */
 export function gradient(text: string, stops: string[] = brandGradient, offset = 0): string {
     const rgb = stops.map(hexToRgb);
@@ -184,12 +184,12 @@ export function gradient(text: string, stops: string[] = brandGradient, offset =
 }
 
 /**
- * Efecto de brillo: una franja clara recorre el texto.
- * Cada vez que se llama con un `tick` mayor, la franja avanza un carácter.
- * @param text texto a animar
- * @param tick número de fotograma
- * @param base color normal del texto
- * @param highlight color del brillo
+ * Shine effect: a light stripe runs across the text.
+ * Each call with a higher `tick` moves the stripe one character.
+ * @param text text to animate
+ * @param tick frame number
+ * @param base normal text color
+ * @param highlight shine color
  */
 export function shimmer(text: string, tick: number, base = palette.indigo, highlight = palette.indigoLight): string {
     const chars = [...text];
@@ -200,37 +200,37 @@ export function shimmer(text: string, tick: number, base = palette.indigo, highl
     let out = '';
     for (let i = 0; i < chars.length; i++) {
         const distance = Math.abs(i - center);
-        // Cuanto más cerca del centro de la franja, más claro.
+        // The closer to the middle of the stripe, the lighter.
         const t = distance > 3 ? 0 : 1 - distance / 4;
         out += fg(mix(baseRgb, lightRgb, t)) + chars[i];
     }
     return out + `${ESC}39m`;
 }
 
-/** Expresión que reconoce cualquier código ANSI. */
+/** Expression that matches any ANSI code. */
 const ansiPattern = /\x1b\[[0-9;?]*[A-Za-z]/g;
 
 /**
- * Quita los códigos ANSI de un texto.
- * @param s texto con colores
+ * Removes the ANSI codes from a text.
+ * @param s text with colors
  */
 export function stripAnsi(s: string): string {
     return s.replace(ansiPattern, '');
 }
 
 /**
- * Longitud que se ve en pantalla (sin contar los códigos ANSI).
- * @param s texto a medir
+ * Length as seen on screen (without counting ANSI codes).
+ * @param s text to measure
  */
 export function visibleLength(s: string): number {
     return [...stripAnsi(s)].length;
 }
 
 /**
- * Recorta el texto a `max` columnas visibles, añadiendo "…" si hace falta.
- * Si recorta, devuelve el texto sin colores.
- * @param s texto a recortar
- * @param max columnas máximas
+ * Cuts the text to `max` visible columns, adding "…" if needed.
+ * If it cuts, it returns the text without colors.
+ * @param s text to cut
+ * @param max maximum columns
  */
 export function truncate(s: string, max: number): string {
     const plain = [...stripAnsi(s)];
@@ -240,7 +240,7 @@ export function truncate(s: string, max: number): string {
     return plain.slice(0, Math.max(max - 1, 0)).join('') + '…';
 }
 
-/** Opciones para dibujar una caja. */
+/** Options to draw a box. */
 export interface BoxOptions {
     color?: string;
     title?: string;
@@ -249,10 +249,10 @@ export interface BoxOptions {
 }
 
 /**
- * Dibuja una caja con esquinas redondeadas alrededor de las líneas.
- * @param lines contenido de la caja
- * @param opts color, título, márgenes y ancho mínimo
- * @returns las líneas ya dibujadas
+ * Draws a box with rounded corners around the lines.
+ * @param lines contents of the box
+ * @param opts color, title, padding and minimum width
+ * @returns the drawn lines
  */
 export function box(lines: string[], opts: BoxOptions = {}): string[] {
     const color = opts.color ?? palette.indigo;
@@ -277,17 +277,17 @@ export function box(lines: string[], opts: BoxOptions = {}): string[] {
 }
 
 /**
- * Barra de progreso compacta, por ejemplo ▰▰▰▰▱▱▱▱.
- * @param done pasos terminados
- * @param total pasos totales
- * @param width ancho en caracteres
+ * Compact progress bar, e.g. ▰▰▰▰▱▱▱▱.
+ * @param done finished steps
+ * @param total total steps
+ * @param width width in characters
  */
 export function progressBar(done: number, total: number, width = 10): string {
     const filled = total === 0 ? width : Math.round((done / total) * width);
     return gradient('▰'.repeat(filled)) + style.color(palette.dim, '▱'.repeat(width - filled));
 }
 
-/** Letras en estilo "ANSI Shadow". Se componen al vuelo para que el banner siempre cuadre. */
+/** "ANSI Shadow" style letters. Composed on the fly so the banner always lines up. */
 const glyphs: Record<string, string[]> = {
     D: ['██████╗ ', '██╔══██╗', '██║  ██║', '██║  ██║', '██████╔╝', '╚═════╝ '],
     E: ['███████╗', '██╔════╝', '█████╗  ', '██╔══╝  ', '███████╗', '╚══════╝'],
@@ -299,8 +299,8 @@ const glyphs: Record<string, string[]> = {
 };
 
 /**
- * Banner grande "DEVSTARTER" con degradado, o una versión de una línea si el terminal es estrecho.
- * @param columns ancho del terminal
+ * Big "DEVSTARTER" banner with a gradient, or a one-line version if the terminal is narrow.
+ * @param columns terminal width
  */
 export function banner(columns: number): string[] {
     const word = [...'DEVSTARTER'];
@@ -315,7 +315,7 @@ export function banner(columns: number): string[] {
     if (columns < visibleLength(rows[0]) + 4) {
         return [gradient(`  ${symbols.logo} D E V S T A R T E R ${symbols.logo}`)];
     }
-    // Cada fila desplaza un poco el degradado para dar un brillo en diagonal.
+    // * Each row shifts the gradient a little to give a diagonal shine.
     const out: string[] = [];
     for (let i = 0; i < rows.length; i++) {
         out.push('  ' + gradient(rows[i], brandGradient, i * 0.03));

@@ -1,11 +1,11 @@
 /**
  * terminal.ts
  * ───────────
- * Terminal propio de DevStarter (un "Pseudoterminal" de VS Code).
+ * DevStarter's own terminal (a VS Code "Pseudoterminal").
  *
- * En vez de mandar comandos a un terminal normal sin saber cuándo terminan,
- * aquí lanzamos cada comando nosotros (child_process), esperamos a que acabe
- * y dibujamos el progreso con animaciones:
+ * Instead of sending commands to a normal terminal without knowing when they finish,
+ * we launch each command ourselves (child_process), wait for it to end
+ * and draw the progress with animations:
  *
  *   ◝ Installing dependencies…  3/9 · 12s ▰▰▰▱▱▱▱▱▱▱   [v] logs  [ctrl+c] cancel
  *     └ tip  Ctrl+P lets you jump to any file by name.
@@ -13,7 +13,7 @@
  *   ◆ Installing dependencies  7.9s
  *     └ $ npm install
  *
- * También traduce los errores típicos a consejos que una persona novata entienda.
+ * It also translates common errors into advice a beginner can follow.
  */
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
@@ -32,36 +32,36 @@ import {
     truncate,
 } from './ui';
 
-/** Paso que ejecuta un comando de consola. */
+/** A step that runs a shell command. */
 export interface CommandStep {
     kind: 'command';
     title: string;
     command: string;
     cwd: string;
-    /** Si un paso opcional falla, solo se muestra un aviso y se sigue adelante. */
+    /** If an optional step fails, only a warning is shown and we move on. */
     optional?: boolean;
     env?: Record<string, string>;
-    /** Códigos de salida (además del 0) que no son un error, p. ej. "no hay una versión más nueva". */
+    /** Exit codes (besides 0) that are not an error, e.g. "there is no newer version". */
     okExitCodes?: number[];
     /**
-     * Se ejecuta cuando el comando termina bien: sirve para comprobar que hizo lo que debía
-     * (p. ej. que la versión cambió). Si lanza un error, el paso falla con ese mensaje.
-     * @param log escribe un detalle bajo el paso
-     * @param exitCode código con el que terminó el comando
+     * Runs when the command ends well: used to check it did what it should
+     * (e.g. that the version changed). If it throws, the step fails with that message.
+     * @param log writes a detail under the step
+     * @param exitCode exit code of the command
      */
     verify?: (log: Logger, exitCode: number) => Promise<void> | void;
     /**
-     * Paquete de npm que ejecuta este comando (p. ej. "@angular/cli") y cómo reconstruir el
-     * comando con otra versión. Permite volver a intentarlo con una versión compatible
-     * si la última pide un Node.js más nuevo.
+     * npm package this command runs (e.g. "@angular/cli") and how to rebuild the
+     * command with another version. Lets us retry with a compatible version
+     * if the latest one needs a newer Node.js.
      */
     compat?: { package: string; command: (version: string) => string };
 }
 
-/** Función que recibe un paso interno para ir contando lo que hace. */
+/** Function an internal step receives to report what it is doing. */
 export type Logger = (message: string) => void;
 
-/** Paso que ejecuta código de la propia extensión (escribir ficheros, etc.). */
+/** A step that runs the extension's own code (write files, etc.). */
 export interface TaskStep {
     kind: 'task';
     title: string;
@@ -73,30 +73,30 @@ export type Step = CommandStep | TaskStep;
 
 export type StepsResult = 'success' | 'failed' | 'cancelled';
 
-/** Plan para arreglar un paso que ha fallado: pasos previos y el paso a reintentar. */
+/** Plan to fix a failed step: steps to run first and the step to retry. */
 export interface Recovery {
-    /** Mensaje que se muestra antes de intentar el arreglo. */
+    /** Message shown before attempting the fix. */
     message: string;
     before: Step[];
     retry: Step;
 }
 
 /**
- * Función que recibe un paso fallido y su salida, y devuelve cómo arreglarlo (o nada).
- * La pone la extensión con setRecovery().
+ * Function that receives a failed step and its output, and returns how to fix it (or nothing).
+ * Set by the extension with setRecovery().
  */
 export type RecoveryHandler = (step: Step, output: string) => Promise<Recovery | undefined>;
 
-/** Error interno para distinguir "lo canceló la persona" de "falló". */
+/** Internal error to tell "the person cancelled" from "it failed". */
 class CancelledError extends Error {}
 
-/** Variables de entorno que hacen que los generadores no pregunten nada y no envíen telemetría. */
+/** Environment variables that stop generators from asking questions or sending telemetry. */
 const quietEnv: Record<string, string> = {
     FORCE_COLOR: '1',
     npm_config_yes: 'true',
     npm_config_fund: 'false',
     npm_config_update_notifier: 'false',
-    // pnpm 11 hace fallar la instalación si una dependencia trae scripts de build sin aprobar.
+    // ! pnpm 11 fails the install if a dependency brings unapproved build scripts.
     pnpm_config_strict_dep_builds: 'false',
     NG_CLI_ANALYTICS: 'false',
     NEXT_TELEMETRY_DISABLED: '1',
@@ -110,7 +110,7 @@ const quietEnv: Record<string, string> = {
     GH_PROMPT_DISABLED: '1',
 };
 
-/** Consejos que van rotando bajo el spinner mientras se espera (modo principiante). */
+/** Tips that rotate under the spinner while waiting (beginner mode). */
 const tips = [
     'Ctrl+P lets you jump to any file by typing its name.',
     'Save with Ctrl+S. Most dev servers reload the browser by themselves.',
@@ -128,10 +128,14 @@ const tips = [
     'F12 jumps to where a function or variable is defined.',
 ];
 
-/** Patrón de error → consejo. */
+/** Error pattern → advice. */
 type Hint = [RegExp, string];
 
 const hints: Hint[] = [
+    [
+        /running scripts is disabled|execution of scripts is disabled|ejecución de scripts está deshabilitada|PSSecurityException|UnauthorizedAccess.*\.ps1/i,
+        'PowerShell is blocking scripts. Run "DevStarter: Check & Update My Tools" and click "Fix it for me", or run:  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned',
+    ],
     [
         /update your Node\.js version|EBADENGINE|requires? (a )?Node(\.js)? version|Unsupported engine/i,
         'Your Node.js version is too old for this tool. Install the latest LTS from https://nodejs.org and restart VS Code.',
@@ -182,9 +186,9 @@ const hints: Hint[] = [
 ];
 
 /**
- * Traduce los errores más típicos a un consejo que una persona novata pueda seguir.
- * @param output salida del comando que falló
- * @returns el consejo, o undefined si no reconoce el error
+ * Translates the most common errors into advice a beginner can follow.
+ * @param output output of the failed command
+ * @returns the advice, or undefined if the error is not recognized
  */
 export function explainError(output: string): string | undefined {
     for (const [pattern, advice] of hints) {
@@ -195,20 +199,20 @@ export function explainError(output: string): string | undefined {
     return undefined;
 }
 
-/** Opciones al crear el terminal. */
+/** Options when creating the terminal. */
 export interface TerminalOptions {
-    /** Mostrar toda la salida de los comandos (se puede cambiar con la tecla "v"). */
+    /** Show the full output of the commands (can be toggled with the "v" key). */
     verbose: boolean;
-    /** Modo principiante: consejos en vez de salida bajo el spinner. */
+    /** Beginner mode: tips instead of output under the spinner. */
     beginner: boolean;
 }
 
 /**
- * El terminal de DevStarter. VS Code llama a open(), close(), handleInput()…
- * y nosotros escribimos lanzando el evento onDidWrite.
+ * DevStarter's terminal. VS Code calls open(), close(), handleInput()…
+ * and we write by firing the onDidWrite event.
  */
 export class DevStarterTerminal implements vscode.Pseudoterminal {
-    // VS Code escucha estos eventos para pintar texto y para cerrar el terminal.
+    // VS Code listens to these events to draw text and to close the terminal.
     private readonly writeEmitter = new vscode.EventEmitter<string>();
     private readonly closeEmitter = new vscode.EventEmitter<number | void>();
     readonly onDidWrite = this.writeEmitter.event;
@@ -217,7 +221,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
     private terminal!: vscode.Terminal;
     private columns = 80;
     private resolveOpen!: () => void;
-    /** Se resuelve cuando VS Code abre el terminal; antes de eso no se puede escribir. */
+    /** Resolves when VS Code opens the terminal; nothing can be written before that. */
     private readonly opened: Promise<void>;
 
     private verbose: boolean;
@@ -226,21 +230,21 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
     private finished = false;
     private child?: cp.ChildProcess;
 
-    // Estado del spinner.
+    // Spinner state.
     private spinner?: NodeJS.Timeout;
     private spinnerText = '';
     private tick = 0;
     private stepStarted = 0;
     private progress = { done: 0, total: 0 };
     private lastOutput = '';
-    /** Salida del último paso que falló (para intentar arreglarlo). */
+    /** Output of the last failed step (to try to fix it). */
     private lastFailure = '';
     private recovery?: RecoveryHandler;
     private tipIndex = Math.floor(Math.random() * tips.length);
 
     /**
-     * El constructor es privado: hay que usar DevStarterTerminal.create().
-     * @param opts modo detallado y modo principiante
+     * The constructor is private: use DevStarterTerminal.create().
+     * @param opts verbose mode and beginner mode
      */
     private constructor(opts: TerminalOptions) {
         this.verbose = opts.verbose;
@@ -252,9 +256,9 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
     }
 
     /**
-     * Crea el terminal, lo muestra y espera a que esté listo para escribir.
-     * @param name título de la pestaña
-     * @param opts opciones de visualización
+     * Creates the terminal, shows it and waits until it is ready for writing.
+     * @param name tab title
+     * @param opts display options
      */
     static async create(name: string, opts: TerminalOptions): Promise<DevStarterTerminal> {
         const pty = new DevStarterTerminal(opts);
@@ -264,16 +268,16 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
             iconPath: new vscode.ThemeIcon('terminal-powershell'),
         });
         pty.terminal.show();
-        // VS Code llama a open() en cuanto muestra el terminal. Si por lo que sea no lo hace,
-        // seguimos a los 10 s en vez de quedarnos colgados para siempre (la salida se guardaría
-        // igualmente y aparece cuando el terminal se abra).
+        // ! VS Code calls open() as soon as it shows the terminal. If for some reason it does not,
+        // ! we go on after 10 s instead of hanging forever (the output is kept anyway
+        // ! and appears when the terminal opens).
         await Promise.race([pty.opened, wait(10000)]);
         return pty;
     }
 
-    // ── Métodos que llama VS Code (interfaz Pseudoterminal) ─────────
+    // ── Methods VS Code calls (Pseudoterminal interface) ────────────
 
-    /** VS Code ha abierto el terminal: ya se puede escribir. */
+    /** VS Code opened the terminal: writing is possible now. */
     open(dimensions: vscode.TerminalDimensions | undefined): void {
         if (dimensions) {
             this.columns = dimensions.columns;
@@ -282,18 +286,18 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         this.resolveOpen();
     }
 
-    /** El terminal cambió de tamaño. */
+    /** The terminal was resized. */
     setDimensions(dimensions: vscode.TerminalDimensions): void {
         this.columns = dimensions.columns;
     }
 
-    /** La persona cerró el terminal: cancelamos lo que esté en marcha. */
+    /** The person closed the terminal: cancel whatever is running. */
     close(): void {
         this.cancel();
         this.dispose();
     }
 
-    /** Teclas pulsadas dentro del terminal. */
+    /** Keys pressed inside the terminal. */
     handleInput(data: string): void {
         if (this.finished) {
             this.closeEmitter.fire();
@@ -309,31 +313,31 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         }
     }
 
-    // ── Escritura ───────────────────────────────────────────────────
+    // ── Writing ─────────────────────────────────────────────────────
 
-    /** Escribe texto tal cual (puede incluir códigos ANSI). */
+    /** Writes text as is (may include ANSI codes). */
     write(text: string): void {
         this.writeEmitter.fire(text);
     }
 
-    /** Escribe una línea. Los terminales necesitan "\r\n", no solo "\n". */
+    /** Writes a line. Terminals need "\r\n", not just "\n". */
     line(text = ''): void {
         this.write(text.replace(/\r?\n/g, '\r\n') + '\r\n');
     }
 
-    /** Escribe varias líneas. */
+    /** Writes several lines. */
     lines(lines: string[]): void {
         for (const l of lines) {
             this.line(l);
         }
     }
 
-    /** Ancho actual del terminal en columnas. */
+    /** Current width of the terminal in columns. */
     get width(): number {
         return this.columns;
     }
 
-    /** Escribe una línea por encima del spinner, que se queda siempre abajo del todo. */
+    /** Writes a line above the spinner, which always stays at the very bottom. */
     private printAbove(text: string): void {
         if (this.spinner) {
             this.write(cursor.clearBelow);
@@ -344,9 +348,9 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         }
     }
 
-    // ── Animaciones ─────────────────────────────────────────────────
+    // ── Animations ──────────────────────────────────────────────────
 
-    /** El banner aparece fila a fila. */
+    /** The banner appears row by row. */
     async banner(): Promise<void> {
         this.line();
         for (const row of banner(this.columns)) {
@@ -356,7 +360,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         this.line();
     }
 
-    /** Efecto máquina de escribir. */
+    /** Typewriter effect. */
     async typewriter(text: string, delay = 14): Promise<void> {
         this.write('  ');
         for (const ch of text) {
@@ -366,7 +370,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         this.line();
     }
 
-    /** Cabecera de sección: ◈ Título */
+    /** Section header: ◈ Title */
     section(title: string): void {
         this.line();
         this.line(`${style.teal(symbols.logo)} ${style.bold(title)}`);
@@ -374,11 +378,11 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
     }
 
     /**
-     * Línea de resultado con un símbolo de color y detalles debajo.
-     * @param color color del símbolo
-     * @param text texto principal
-     * @param details líneas que cuelgan debajo
-     * @param symbol símbolo a usar (◆ por defecto)
+     * Result line with a colored symbol and details below.
+     * @param color color of the symbol
+     * @param text main text
+     * @param details lines hanging below
+     * @param symbol symbol to use (◆ by default)
      */
     result(color: string, text: string, details: string[] = [], symbol: string = symbols.done): void {
         this.line(`${style.color(color, symbol)} ${text}`);
@@ -387,7 +391,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         }
     }
 
-    /** Hace brillar un texto durante un momento y lo deja fijo. */
+    /** Makes a text shine for a moment and then leaves it fixed. */
     async shimmerLine(text: string, durationMs = 1500): Promise<void> {
         const frames = Math.round(durationMs / 40);
         for (let i = 0; i <= frames; i++) {
@@ -399,7 +403,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
 
     // ── Spinner ─────────────────────────────────────────────────────
 
-    /** Empieza a animar el spinner con el título del paso. */
+    /** Starts animating the spinner with the step title. */
     private startSpinner(text: string): void {
         this.spinnerText = text;
         this.stepStarted = Date.now();
@@ -408,7 +412,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         this.spinner = setInterval(this.onSpinnerTick.bind(this), 100);
     }
 
-    /** Cada 100 ms: avanza la animación y, cada ~7 s, cambia de consejo. */
+    /** Every 100 ms: advance the animation and, every ~7 s, change the tip. */
     private onSpinnerTick(): void {
         this.tick++;
         if (this.tick % 70 === 0) {
@@ -418,8 +422,8 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
     }
 
     /**
-     * Dibuja las dos líneas del spinner y deja el cursor al principio de la primera,
-     * así la siguiente vez basta con borrar "desde aquí hacia abajo".
+     * Draws the two spinner lines and leaves the cursor at the start of the first one,
+     * so next time it is enough to clear "from here down".
      */
     private renderSpinner(): void {
         const width = Math.max(this.columns - 1, 20);
@@ -431,7 +435,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         const title = truncate(this.spinnerText + '…', Math.max(width - 52, 10));
         const first = `${frame} ${shimmer(title, this.tick)}  ${counter} ${bar}  ${keys}`;
 
-        // Segunda línea: un consejo para principiantes, o la última salida del comando.
+        // * Second line: a tip for beginners, or the latest command output.
         let second = '';
         if (!this.verbose) {
             if (this.beginner) {
@@ -444,7 +448,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         this.write(cursor.clearBelow + truncate(first, width) + secondLine + '\r');
     }
 
-    /** Para el spinner y borra sus líneas. */
+    /** Stops the spinner and clears its lines. */
     private stopSpinner(): void {
         if (this.spinner) {
             clearInterval(this.spinner);
@@ -453,11 +457,11 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         this.write(cursor.clearBelow);
     }
 
-    // ── Ejecución de pasos ──────────────────────────────────────────
+    // ── Running steps ───────────────────────────────────────────────
 
     /**
-     * Ejecuta los pasos en orden y se detiene en el primer paso obligatorio que falle.
-     * @param steps pasos a ejecutar
+     * Runs the steps in order and stops at the first required step that fails.
+     * @param steps steps to run
      */
     async runSteps(steps: Step[]): Promise<StepsResult> {
         const queue = [...steps];
@@ -470,7 +474,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
             const step = queue[i];
             const outcome = await this.runStep(step);
             if (outcome === 'failed' && this.recovery && !recovered.has(step)) {
-                // Un solo intento de arreglo por paso, para no entrar en un bucle.
+                // ! Only one fix attempt per step, to avoid loops.
                 recovered.add(step);
                 const plan = await this.recovery(step, this.lastFailure);
                 if (plan) {
@@ -492,23 +496,23 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
     }
 
     /**
-     * Permite a la extensión arreglar pasos que fallan (p. ej. actualizar Node.js y reintentar).
-     * @param handler función que decide cómo arreglar un fallo
+     * Lets the extension fix failing steps (e.g. update Node.js and retry).
+     * @param handler function that decides how to fix a failure
      */
     setRecovery(handler: RecoveryHandler): void {
         this.recovery = handler;
     }
 
     /**
-     * Ejecuta un paso con su spinner y escribe el resultado.
-     * Los pasos opcionales que fallan devuelven 'success' (solo muestran un aviso).
+     * Runs a step with its spinner and writes the result.
+     * Optional steps that fail return 'success' (they only show a warning).
      */
     private async runStep(step: Step): Promise<StepsResult> {
-        const tail: string[] = []; // últimas líneas de salida, para mostrarlas si falla
-        const logs: string[] = []; // mensajes de los pasos internos
+        const tail: string[] = []; // last output lines, shown if it fails
+        const logs: string[] = []; // messages from internal steps
         const self = this;
 
-        /** Guarda un detalle para mostrarlo bajo el paso (y en directo si hay logs activados). */
+        /** Keeps a detail to show under the step (and live if logs are on). */
         function log(message: string): void {
             logs.push(message);
             if (self.verbose) {
@@ -530,7 +534,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
             this.stopSpinner();
             const secs = ((Date.now() - started) / 1000).toFixed(1);
             const details = [...logs];
-            // Los programadores ven también el comando que se ejecutó.
+            // * Experienced users also see the command that ran.
             if (step.kind === 'command' && !this.beginner) {
                 details.unshift(`$ ${truncate(step.command, Math.max(this.columns - 10, 20))}`);
             }
@@ -556,7 +560,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         }
     }
 
-    /** Muestra las últimas líneas de salida en una caja roja y el consejo, si lo hay. */
+    /** Shows the last output lines in a red box, plus the advice if there is any. */
     private showFailure(tail: string[], hint: string | undefined): void {
         this.line();
         if (tail.length && !this.verbose) {
@@ -575,10 +579,10 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
     }
 
     /**
-     * Lanza un comando y resuelve con su código de salida cuando termina bien
-     * (código 0 o uno de los aceptados en `okExitCodes`).
-     * @param step paso con el comando y la carpeta
-     * @param tail aquí se van guardando las últimas líneas de salida
+     * Launches a command and resolves with its exit code when it ends well
+     * (code 0 or one of those accepted in `okExitCodes`).
+     * @param step step with the command and the folder
+     * @param tail the last output lines are collected here
      */
     private exec(step: CommandStep, tail: string[]): Promise<number> {
         if (this.verbose) {
@@ -590,14 +594,14 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
                 cwd: step.cwd,
                 shell: true,
                 windowsHide: true,
-                // Sin entrada estándar: si algo intenta preguntar, falla rápido en vez de quedarse colgado.
+                // ! No standard input: if something tries to ask a question, it fails fast instead of hanging.
                 stdio: ['ignore', 'pipe', 'pipe'],
                 env: { ...process.env, ...quietEnv, ...step.env },
             });
             self.child = child;
 
-            // La salida llega en trozos; juntamos hasta tener líneas completas.
             let partial = '';
+            /** Output arrives in chunks: join them and handle each complete line. */
             function onData(chunk: Buffer): void {
                 const parts = (partial + chunk.toString()).split(/\r?\n/);
                 partial = parts.pop() ?? '';
@@ -628,10 +632,10 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         });
     }
 
-    /** Procesa una línea de salida: la guarda y, si hay logs en directo, la muestra. */
+    /** Processes an output line: keeps it and, if live logs are on, shows it. */
     private onOutputLine(raw: string, tail: string[]): void {
-        // Nos quedamos con lo último tras un "\r" (barras de progreso) y quitamos
-        // los movimientos de cursor, pero conservamos los colores (códigos que acaban en "m").
+        // Keep what comes after the last "\r" (progress bars) and drop cursor
+        // movements, but keep the colors (codes ending in "m").
         const line = (raw.split('\r').pop() ?? '').replace(/\x1b\[[0-9;?]*[A-Za-ln-z]/g, '').trimEnd();
         const plain = stripAnsi(line).trim();
         if (!plain) {
@@ -647,7 +651,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         }
     }
 
-    /** Cancela el paso actual matando el proceso (y sus hijos). */
+    /** Cancels the current step by killing the process (and its children). */
     cancel(): void {
         if (this.cancelled || this.finished) {
             return;
@@ -656,7 +660,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         const child = this.child;
         if (child?.pid) {
             if (process.platform === 'win32') {
-                // Con shell: true el comando va dentro de cmd.exe, así que matamos todo el árbol.
+                // ! With shell: true the command runs inside cmd.exe, so we kill the whole tree.
                 cp.spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
             } else {
                 child.kill('SIGTERM');
@@ -664,7 +668,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         }
     }
 
-    /** Al terminar, cualquier tecla cierra el terminal. */
+    /** Once finished, any key closes the terminal. */
     finish(): void {
         this.finished = true;
         this.stopSpinner();
@@ -673,7 +677,7 @@ export class DevStarterTerminal implements vscode.Pseudoterminal {
         this.write(cursor.show);
     }
 
-    /** Libera los recursos del terminal. */
+    /** Frees the terminal's resources. */
     private dispose(): void {
         this.stopSpinner();
         this.writeEmitter.dispose();

@@ -1,20 +1,20 @@
 /**
  * scaffold/welcome.ts
  * ───────────────────
- * Páginas de bienvenida hechas con Tailwind, para que quien empieza vea que todo funciona.
- * Si el proyecto tiene backend, la página además le hace una petición a /api/health
- * y muestra la respuesta, así se ve que frontend y backend están conectados.
+ * Welcome pages built with Tailwind, so beginners can see that everything works.
+ * If the project has a backend, the page also calls /api/health and shows the
+ * answer, proving that frontend and backend are connected.
  *
- * Nota: el código que hay dentro de las plantillas (`...`) es el que se escribe en el
- * proyecto del usuario, y sigue el estilo habitual de cada framework.
+ * ? Note: the code inside the templates (`...`) is what gets written into the user's
+ * project, and follows the usual style of each framework.
  */
 import * as path from 'path';
 import { write } from './files';
 
-/** Frameworks para los que hay página de bienvenida. */
+/** Frameworks that have a welcome page. */
 export type WelcomeFramework = 'react' | 'vue' | 'svelte' | 'vanilla';
 
-// Clases de Tailwind compartidas por todas las variantes (colores de DevStarter: turquesa, índigo, fucsia).
+// * Tailwind classes shared by every variant (DevStarter colors: teal, indigo, fuchsia).
 const heading =
     'text-5xl font-extrabold bg-linear-to-r from-teal-300 via-indigo-400 to-fuchsia-400 bg-clip-text text-transparent';
 const button =
@@ -23,12 +23,12 @@ const page = 'min-h-screen bg-slate-950 text-slate-100 flex items-center justify
 const apiBox = 'rounded-lg border border-slate-800 bg-slate-900 p-3 text-left font-mono text-sm text-teal-300';
 
 /**
- * Sustituye el componente principal por una página de bienvenida con Tailwind.
- * @param dir carpeta del frontend
- * @param framework framework del proyecto
- * @param name nombre del proyecto (se muestra como título)
- * @param typescript el proyecto usa TypeScript
- * @param withApi hay backend: la página le hace una petición
+ * Replaces the main component with a Tailwind welcome page.
+ * @param dir frontend folder
+ * @param framework project framework
+ * @param name project name (shown as the title)
+ * @param typescript the project uses TypeScript
+ * @param withApi there is a backend: the page calls it
  */
 export function writeWelcomePage(
     dir: string,
@@ -165,7 +165,7 @@ ${withApi ? `    <pre class="${apiBox}">{api}</pre>\n` : ''}  </div>
             );
             break;
         case 'vanilla': {
-            /** Código JS/TS para seleccionar un elemento del HTML (con tipo en TypeScript). */
+            /** JS/TS code to select an HTML element (typed in TypeScript). */
             function el(sel: string, type: string): string {
                 return typescript ? `document.querySelector<${type}>('${sel}')!` : `document.querySelector('${sel}')`;
             }

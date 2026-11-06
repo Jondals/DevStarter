@@ -1,96 +1,84 @@
 /**
  * wizard.ts
  * ─────────
- * Asistente "New Project": una serie de pasos con QuickPick/InputBox de VS Code.
+ * Quick mode of the New Project wizard: a sequence of VS Code QuickPick / InputBox steps,
+ * driven entirely from the keyboard. (The visual mode lives in webview/wizardPanel.ts;
+ * both share the rules in wizardModel.ts.)
  *
- *   0. Nivel de experiencia (solo la primera vez)
- *   1. Qué construir (o "Repeat last setup")
- *   2. Lenguaje · 3. Backend · 4. Base de datos · 5. Librerías · 6. Extras
- *   7. Gestor de paquetes · 8. Carpeta · 9. Nombre · 10. Confirmar
+ *   0. Experience level (first time only)
+ *   1. What to build (an idea, a technology or "Repeat last setup")
+ *   2. Language · 3. Backend · 4. Database · 5. Libraries · 6. Extras
+ *   7. Package manager · 8. Folder · 9. Name · 10. Confirm
  *
- * Cada paso tiene botón "atrás", y los pasos que no aplican (p. ej. elegir base de datos
- * en un proyecto sin backend) se saltan solos.
+ * Every step has a Back button, and steps that do not apply (e.g. picking a database for a
+ * project without a backend) are skipped automatically.
+ * * Ideas only pre-fill the answers: every step is still shown so anything can be changed.
  */
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
+import { attachableBackends, Category, findTemplate, Preset, presets, Template, templates } from './templates';
+import { PackageManager, ToolInfo } from './tools';
+import { Database } from './scaffold/database';
+import { databaseOwner, describe, plainSummary, ProjectChoice, usesNode } from './project';
 import {
-    attachableBackends,
-    Category,
-    findTemplate,
-    Library,
-    librariesFor,
-    Preset,
-    presets,
-    suggestName,
-    Template,
-    templates,
-    validateProjectName,
-} from './templates';
-import { PackageManager, PackageManagerId, ToolInfo } from './tools';
-import { Database, needsServer } from './scaffold/database';
-import { databaseOwner, describe, Extra, plainSummary, ProjectChoice, usesNode } from './project';
+    applyLastSetup,
+    applyPreset,
+    availableLibraries,
+    checkName,
+    databaseInfo,
+    Draft,
+    extraOptions,
+    ExtraOption,
+    folderOptions,
+    freeName,
+    initialDraft,
+    LAST_SETUP_KEY,
+    LastSetup,
+    packageManagerInfo,
+    packageManagerStatus,
+    rememberChoice,
+    selectTemplate,
+    setExtras,
+    toChoice,
+    WizardContext,
+} from './wizardModel';
 
-/** Lo que el asistente necesita de la extensión. */
-export interface WizardContext {
-    globalState: vscode.Memento;
-    packageManagers: Promise<PackageManager[]>;
-    git: Promise<ToolInfo>;
-    /** GitHub CLI (para el extra "Publish to GitHub"). Opcional. */
-    gh?: Promise<ToolInfo>;
-    /** Plantilla elegida de antemano (desde el walkthrough). */
-    preselect?: string;
-}
-
-/** Lo que se guarda para "Repeat last setup". */
-interface LastSetup {
-    templateId: string;
-    backendId?: string;
-    typescript: boolean;
-    tailwind: boolean;
-    database?: Database;
-    libraries?: string[];
-    extras: Extra[];
-    pmId: PackageManagerId;
-    parentDir: string;
-}
+// ? Re-exported so existing imports (`import { WizardContext } from './wizard'`) keep working.
+export { WizardContext } from './wizardModel';
 
 const BACK = Symbol('back');
 type Back = typeof BACK;
-/** Resultado de un paso: seguir, volver atrás o cancelar (undefined). */
+/** Result of a step: go on, go back, or cancel (undefined). */
 type Outcome = 'next' | Back | undefined;
 
-/** Posición del paso actual ("Paso 2 de 7") y título de la ventana. */
+/** Position of the current step ("Step 2 of 7") and window title. */
 interface Position {
     step: number;
     total: number;
     title: string;
 }
 
-const LAST_FOLDER_KEY = 'devstarter.lastParentFolder';
-const LAST_SETUP_KEY = 'devstarter.lastSetup';
-
-/** Elemento de una lista con un valor asociado. */
+/** A list item carrying a value. */
 type Item<T> = vscode.QuickPickItem & { value: T };
 
-// ─── Entradas de bajo nivel ─────────────────────────────────────────
-// Usamos createQuickPick/createInputBox (y no showQuickPick) porque permiten
-// mostrar "Paso 2 de 7" y el botón de volver atrás.
+// ─── Low-level inputs ───────────────────────────────────────────────
+// * createQuickPick/createInputBox (instead of showQuickPick) let us show "Step 2 of 7" and a Back button.
 
-/** Opciones de una lista. */
+/** Options of a list. */
 interface PickOptions<T> {
     placeholder: string;
     items: T[];
-    /** Permitir marcar varias opciones. */
+    /** Allow ticking several options. */
     many?: boolean;
-    /** Opción resaltada al abrir. */
+    /** Option highlighted when the list opens. */
     active?: T;
 }
 
 /**
- * Muestra una lista y espera a que se elija algo.
- * @returns lo elegido, BACK si pulsó "atrás", o undefined si la cerró
+ * Shows a list and waits until something is chosen.
+ * @param pos step position and title
+ * @param opts list options
+ * @returns the chosen items, BACK if Back was pressed, or undefined if the list was closed
  */
 function pick<T extends vscode.QuickPickItem>(
     pos: Position,
@@ -100,7 +88,7 @@ function pick<T extends vscode.QuickPickItem>(
         const qp = vscode.window.createQuickPick<T>();
         let done = false;
 
-        /** Resuelve una sola vez y cierra la lista. */
+        /** Resolves only once and closes the list. */
         function finish(value: readonly T[] | Back | undefined): void {
             if (!done) {
                 done = true;
@@ -117,7 +105,7 @@ function pick<T extends vscode.QuickPickItem>(
         qp.canSelectMany = !!opts.many;
         qp.matchOnDescription = true;
         qp.matchOnDetail = true;
-        qp.ignoreFocusOut = true; // que no se cierre al hacer clic fuera
+        qp.ignoreFocusOut = true; // * do not close when clicking elsewhere
         qp.buttons = pos.step > 1 ? [vscode.QuickInputButtons.Back] : [];
         if (opts.many) {
             qp.selectedItems = opts.items.filter(isPicked);
@@ -137,30 +125,35 @@ function pick<T extends vscode.QuickPickItem>(
     });
 }
 
-/** ¿Este elemento empieza marcado? */
+/**
+ * Whether an item starts ticked.
+ * @param item list item
+ */
 function isPicked(item: vscode.QuickPickItem): boolean {
     return !!item.picked;
 }
 
-/** Opciones de un campo de texto. */
+/** Options of a text field. */
 interface InputOptions {
     prompt: string;
     placeholder: string;
     value: string;
-    /** Devuelve un mensaje de error, o undefined si el texto vale. */
+    /** Returns an error message, or undefined if the text is valid. */
     validate: (v: string) => string | undefined;
 }
 
 /**
- * Muestra un campo de texto con validación en vivo.
- * @returns el texto, BACK si pulsó "atrás", o undefined si lo cerró
+ * Shows a text field with live validation.
+ * @param pos step position and title
+ * @param opts field options
+ * @returns the text, BACK if Back was pressed, or undefined if the field was closed
  */
 function input(pos: Position, opts: InputOptions): Promise<string | Back | undefined> {
     return new Promise(function (resolve) {
         const box = vscode.window.createInputBox();
         let done = false;
 
-        /** Resuelve una sola vez y cierra el campo. */
+        /** Resolves only once and closes the field. */
         function finish(value: string | Back | undefined): void {
             if (!done) {
                 done = true;
@@ -201,8 +194,12 @@ function input(pos: Position, opts: InputOptions): Promise<string | Back | undef
 }
 
 /**
- * Atajo para pasos de una sola elección.
- * @returns { value } con lo elegido, BACK, o undefined si se canceló
+ * Shortcut for single-choice steps.
+ * @param pos step position and title
+ * @param placeholder question shown in the list
+ * @param items options
+ * @param current value highlighted when the list opens
+ * @returns { value } with the choice, BACK, or undefined if cancelled
  */
 async function choose<T>(
     pos: Position,
@@ -223,27 +220,17 @@ async function choose<T>(
     return result?.[0] ? { value: result[0].value } : undefined;
 }
 
-// ─── Estado del asistente ───────────────────────────────────────────
+// ─── Wizard state ───────────────────────────────────────────────────
 
-/** Todo lo que se va eligiendo. */
-interface State {
-    beginner?: boolean;
+/** The draft plus what only quick mode needs to know. */
+interface State extends Draft {
+    /** The experience question was shown in this run (so Back can return to it). */
     askedLevel: boolean;
-    template?: Template;
-    backend?: Template;
-    typescript: boolean;
-    tailwind: boolean;
-    database?: Database;
-    libraries: Set<string>;
-    extras: Set<Extra>;
-    pm: PackageManager;
-    name?: string;
-    parentDir?: string;
-    /** Se eligió "Repeat last setup": saltamos directamente al nombre. */
+    /** "Repeat last setup" was chosen: jump straight to the name. */
     repeat: boolean;
 }
 
-/** Un paso del asistente: cuándo aplica y qué hace. */
+/** A step of the wizard: when it applies and what it does. */
 interface WizardStep {
     applies(s: State): boolean;
     run(s: State, pos: Position): Promise<Outcome>;
@@ -257,7 +244,7 @@ const categoryLabels: Record<Category, string> = {
     Other: 'Other · scripts & more',
 };
 
-/** Datos compartidos por todos los pasos. */
+/** Data shared by every step. */
 interface Shared {
     ctx: WizardContext;
     config: vscode.WorkspaceConfiguration;
@@ -267,28 +254,54 @@ interface Shared {
     last?: LastSetup;
 }
 
+/** Marker of the option DevStarter recommends to beginners. */
+const STAR = '⭐ Recommended';
+
 /**
- * Librerías disponibles para el proyecto actual (de la plantilla y del backend).
- * @param s estado del asistente
+ * Prefixes the recommendation marker (beginner mode only).
+ * @param beginner beginner mode
+ * @param recommended the option is the recommended one
+ * @param text option text (may be empty)
  */
-function availableLibraries(s: State): Array<{ lib: Library; part: string }> {
-    const result: Array<{ lib: Library; part: string }> = [];
-    if (s.template) {
-        for (const lib of librariesFor(s.template.id)) {
-            result.push({ lib, part: s.backend ? 'frontend' : s.template.label });
-        }
+function recommend(beginner: boolean | undefined, recommended: boolean | undefined, text?: string): string | undefined {
+    if (!beginner || !recommended) {
+        return text;
     }
-    if (s.backend) {
-        for (const lib of librariesFor(s.backend.id)) {
-            result.push({ lib, part: 'backend' });
-        }
-    }
-    return result;
+    return text ? `${STAR} · ${text}` : STAR;
 }
 
-// ─── Pasos ──────────────────────────────────────────────────────────
+/**
+ * Moves the recommended options to the top (beginner mode only), keeping the order of the rest.
+ * @param list options
+ * @param beginner beginner mode
+ * @param isRecommended tells whether an option is recommended
+ */
+function recommendedFirst<T>(list: T[], beginner: boolean | undefined, isRecommended: (item: T) => boolean): T[] {
+    if (!beginner) {
+        return list;
+    }
+    const first: T[] = [];
+    const rest: T[] = [];
+    for (const item of list) {
+        (isRecommended(item) ? first : rest).push(item);
+    }
+    return [...first, ...rest];
+}
 
-/** 0. Nivel de experiencia. */
+/**
+ * Whether a template is recommended for beginners.
+ * @param t template
+ */
+function isRecommendedTemplate(t: Template): boolean {
+    return !!t.recommended;
+}
+
+// ─── Steps ──────────────────────────────────────────────────────────
+
+/**
+ * 0. Experience level.
+ * @param sh shared data
+ */
 function levelStep(sh: Shared): WizardStep {
     return {
         applies(s) {
@@ -327,52 +340,13 @@ function levelStep(sh: Shared): WizardStep {
     };
 }
 
-/** Marca de la opción que DevStarter recomienda a quien empieza. */
-const STAR = '⭐ Recommended';
-
-/**
- * Añade la marca de recomendación delante del texto (solo en modo principiante).
- * @param beginner modo principiante
- * @param recommended la opción es la recomendada
- * @param text texto de la opción (puede estar vacío)
- */
-function recommend(beginner: boolean | undefined, recommended: boolean | undefined, text?: string): string | undefined {
-    if (!beginner || !recommended) {
-        return text;
-    }
-    return text ? `${STAR} · ${text}` : STAR;
-}
-
-/**
- * Pone primero las opciones recomendadas (solo en modo principiante), sin cambiar el orden del resto.
- * @param list opciones
- * @param beginner modo principiante
- * @param isRecommended dice si una opción es la recomendada
- */
-function recommendedFirst<T>(list: T[], beginner: boolean | undefined, isRecommended: (item: T) => boolean): T[] {
-    if (!beginner) {
-        return list;
-    }
-    const first: T[] = [];
-    const rest: T[] = [];
-    for (const item of list) {
-        (isRecommended(item) ? first : rest).push(item);
-    }
-    return [...first, ...rest];
-}
-
-/** ¿Esta plantilla está recomendada para principiantes? */
-function isRecommendedTemplate(t: Template): boolean {
-    return !!t.recommended;
-}
-
-/** Lo que se puede elegir en el paso 1: repetir, una idea o una plantilla. */
+/** What can be chosen in step 1: repeat, an idea or a template. */
 type StartChoice =
     { kind: 'repeat' } | { kind: 'preset'; preset: Preset } | { kind: 'template'; template: Template } | undefined;
 
 /**
- * Elementos "Start from an idea" (para quien no conoce los nombres de los frameworks).
- * @param beginner modo principiante (muestra la explicación)
+ * "Start from an idea" items (for people who do not know framework names yet).
+ * @param beginner beginner mode (shows the explanation)
  */
 function presetItems(beginner: boolean | undefined): Array<Item<StartChoice>> {
     const items: Array<Item<StartChoice>> = [
@@ -394,8 +368,8 @@ function presetItems(beginner: boolean | undefined): Array<Item<StartChoice>> {
 }
 
 /**
- * Elementos de las plantillas, agrupados por categoría.
- * @param beginner modo principiante (muestra la explicación y las recomendadas)
+ * Template items, grouped by category.
+ * @param beginner beginner mode (shows explanations and recommended picks)
  */
 function templateItems(beginner: boolean | undefined): Array<Item<StartChoice>> {
     const items: Array<Item<StartChoice>> = [];
@@ -408,7 +382,7 @@ function templateItems(beginner: boolean | undefined): Array<Item<StartChoice>> 
             items.push({
                 label: `$(${t.icon}) ${t.label}`,
                 description: recommend(beginner, t.recommended, t.description),
-                // Los programadores ven una lista más compacta.
+                // * Experienced users get a more compact list.
                 detail: beginner ? t.detail : undefined,
                 value: { kind: 'template', template: t },
             });
@@ -417,7 +391,10 @@ function templateItems(beginner: boolean | undefined): Array<Item<StartChoice>> 
     return items;
 }
 
-/** 1. Qué construir: repetir lo último, una idea o una plantilla concreta. */
+/**
+ * 1. What to build: repeat the last setup, an idea or a specific template.
+ * @param sh shared data
+ */
 function templateStep(sh: Shared): WizardStep {
     return {
         applies() {
@@ -429,12 +406,6 @@ function templateStep(sh: Shared): WizardStep {
             const last = sh.last;
             const lastTemplate = findTemplate(last?.templateId);
             if (last && lastTemplate) {
-                let lastPm = s.pm;
-                for (const p of sh.pms) {
-                    if (p.id === last.pmId) {
-                        lastPm = p;
-                    }
-                }
                 const summary = describe({
                     template: lastTemplate,
                     backend: findTemplate(last.backendId),
@@ -443,15 +414,18 @@ function templateStep(sh: Shared): WizardStep {
                     database: last.database,
                     libraries: last.libraries ?? [],
                     extras: last.extras,
-                    pm: lastPm,
+                    pm:
+                        sh.pms.find(function (p) {
+                            return p.id === last.pmId;
+                        }) ?? s.pm,
                 });
                 items.push(
                     { label: 'Quick start', kind: vscode.QuickPickItemKind.Separator, value: undefined },
                     { label: '$(history) Repeat last setup', description: summary, value: { kind: 'repeat' } },
                 );
             }
-            // Principiantes: las ideas primero y, debajo, TODAS las tecnologías (las recomendadas
-            // arriba de cada grupo y con estrella). Programadores: las tecnologías y, al final, las ideas.
+            // * Beginners: ideas first and then EVERY technology (recommended ones on top of each group).
+            // * Experienced: technologies first and the ideas at the end.
             const shown: Array<Item<StartChoice>> = s.beginner
                 ? [...items, ...presetItems(true), ...templateItems(true)]
                 : [...items, ...templateItems(false), ...presetItems(false)];
@@ -469,63 +443,19 @@ function templateStep(sh: Shared): WizardStep {
                 return result === BACK ? BACK : undefined;
             }
             const value = result[0].value;
-            if (value.kind === 'repeat' && last && lastTemplate) {
-                applyLastSetup(s, last, lastTemplate, sh.pms);
+            if (value.kind === 'repeat' && last) {
+                s.repeat = applyLastSetup(s, last, sh.pms);
             } else if (value.kind === 'preset') {
                 applyPreset(s, value.preset);
             } else if (value.kind === 'template') {
-                s.template = value.template;
-                // Si cambia de plantilla, olvidamos lo que no tenga sentido para la nueva.
-                if (!value.template.acceptsBackend) {
-                    s.backend = undefined;
-                }
+                selectTemplate(s, value.template);
             }
             return 'next';
         },
     };
 }
 
-/**
- * Rellena el estado con una idea: plantilla, librerías y opciones ya decididas.
- * Igual que "Repeat last setup", salta directamente a la carpeta y el nombre.
- * @param s estado del asistente
- * @param preset idea elegida
- */
-function applyPreset(s: State, preset: Preset): void {
-    s.repeat = true;
-    s.template = findTemplate(preset.template);
-    s.backend = findTemplate(preset.backend);
-    s.typescript = preset.typescript;
-    s.tailwind = preset.tailwind;
-    s.database = preset.database;
-    s.libraries = new Set(preset.libraries);
-}
-
-/**
- * Rellena el estado con la última configuración usada.
- * @param s estado del asistente
- * @param last configuración guardada
- * @param template plantilla de esa configuración
- * @param pms gestores de paquetes detectados
- */
-function applyLastSetup(s: State, last: LastSetup, template: Template, pms: PackageManager[]): void {
-    s.repeat = true;
-    s.template = template;
-    s.backend = findTemplate(last.backendId);
-    s.typescript = last.typescript;
-    s.tailwind = last.tailwind;
-    s.database = last.database;
-    s.libraries = new Set(last.libraries ?? []);
-    s.extras = new Set(last.extras);
-    for (const p of pms) {
-        if (p.id === last.pmId) {
-            s.pm = p;
-        }
-    }
-    s.parentDir = fs.existsSync(last.parentDir) ? last.parentDir : undefined;
-}
-
-/** 2. Lenguaje. */
+/** 2. Language. */
 function languageStep(): WizardStep {
     return {
         applies(s) {
@@ -561,7 +491,7 @@ function languageStep(): WizardStep {
     };
 }
 
-/** 3. Backend (para frontends y apps móviles). */
+/** 3. Backend (for frontends and mobile apps). */
 function backendStep(): WizardStep {
     return {
         applies(s) {
@@ -593,21 +523,10 @@ function backendStep(): WizardStep {
     };
 }
 
-/** Nombre, icono y explicación de cada base de datos. */
-const databaseInfo: Record<Database, [string, string]> = {
-    SQLite: ['$(file) SQLite', 'Stored in a single file. Nothing else to install. Easiest to start.'],
-    PostgreSQL: [
-        '$(database) PostgreSQL',
-        'Powerful SQL database. Needs a server (Docker, local install or a free cloud one).',
-    ],
-    MySQL: ['$(database) MySQL', 'Popular SQL database. Needs a server (Docker, local install or cloud).'],
-    MongoDB: ['$(json) MongoDB', 'Stores JSON-like documents. Needs MongoDB, Docker or a free Atlas cluster.'],
-};
-
-/** 4. Base de datos. */
+/** 4. Database. */
 function databaseStep(): WizardStep {
     return {
-        // Antes de elegir plantilla aún no sabemos si aplica (se calcula para "Paso X de Y").
+        // ? Before the template is chosen we cannot know yet; this is also used to compute "Step X of Y".
         applies(s) {
             return !s.repeat && !!s.template && !!databaseOwner({ template: s.template, backend: s.backend });
         },
@@ -622,9 +541,9 @@ function databaseStep(): WizardStep {
             ];
             for (const db of owner.databases!) {
                 items.push({
-                    label: databaseInfo[db][0],
+                    label: `$(${databaseInfo[db].icon}) ${databaseInfo[db].label}`,
                     description: db === 'SQLite' ? (recommend(s.beginner, true, 'easiest') ?? 'easiest') : undefined,
-                    detail: s.beginner ? databaseInfo[db][1] : undefined,
+                    detail: s.beginner ? databaseInfo[db].detail : undefined,
                     value: db,
                 });
             }
@@ -639,7 +558,7 @@ function databaseStep(): WizardStep {
     };
 }
 
-/** 5. Librerías. */
+/** 5. Libraries. */
 function librariesStep(): WizardStep {
     return {
         applies(s) {
@@ -649,7 +568,7 @@ function librariesStep(): WizardStep {
             const items: Array<Item<string>> = [];
             let lastPart = '';
             for (const { lib, part } of availableLibraries(s)) {
-                // Separador por parte (frontend / backend) en proyectos full-stack.
+                // * One separator per part (frontend / backend) in full-stack projects.
                 if (part !== lastPart) {
                     items.push({ label: part, kind: vscode.QuickPickItemKind.Separator, value: '' });
                     lastPart = part;
@@ -681,110 +600,26 @@ function librariesStep(): WizardStep {
     };
 }
 
-/** 6. Extras. */
+/**
+ * 6. Extras (Tailwind, Git, GitHub, CI…).
+ * @param sh shared data
+ */
 function extrasStep(sh: Shared): WizardStep {
     return {
         applies(s) {
             return !s.repeat && !!s.template;
         },
         async run(s, pos) {
-            const t = s.template!;
-            const dockerOwner = s.backend ?? t;
-            const items: Array<Item<Extra | 'tailwind'>> = [];
-
-            /** Añade una opción a la lista (el detalle solo se ve en modo principiante). */
-            function add(
-                value: Extra | 'tailwind',
-                label: string,
-                description: string,
-                detail: string,
-                picked: boolean,
-            ): void {
-                // Las que DevStarter marca de serie son las recomendadas para quien empieza.
-                const advised = value === 'tailwind' || value === 'git' || value === 'vscode';
+            const items: Array<Item<ExtraOption['value']>> = [];
+            for (const option of extraOptions(s, sh.git, sh.gh)) {
                 items.push({
-                    label,
-                    description: recommend(s.beginner, advised, description),
-                    detail: s.beginner ? detail : undefined,
-                    picked,
-                    value,
+                    label: `$(${option.icon}) ${option.label}`,
+                    description: recommend(s.beginner, option.advised, option.description),
+                    detail: s.beginner ? option.detail : undefined,
+                    picked: option.picked,
+                    value: option.value,
                 });
             }
-
-            if (t.tailwind) {
-                add(
-                    'tailwind',
-                    '$(paintcan) Tailwind CSS',
-                    'style with classes',
-                    'Utility classes like "text-xl font-bold". Very popular and fast to use.',
-                    s.tailwind,
-                );
-            }
-            add(
-                'git',
-                '$(git-branch) Git repository',
-                sh.git.version ? 'version control' : 'Git will be installed',
-                'Track your changes and undo mistakes.',
-                s.extras.has('git'),
-            );
-            add(
-                'publish',
-                '$(github) Publish to GitHub',
-                sh.gh?.version ? 'private repository' : 'GitHub CLI will be installed',
-                'Creates a private repository on your GitHub account and uploads the project (needs "gh auth login" once).',
-                s.extras.has('publish'),
-            );
-            add(
-                'vscode',
-                '$(extensions) Recommended VS Code extensions',
-                'for this stack',
-                'VS Code will offer to install the extensions that make this stack easier.',
-                s.extras.has('vscode'),
-            );
-            if (needsServer(s.database)) {
-                add(
-                    'compose',
-                    `$(server-environment) Docker Compose for ${s.database}`,
-                    'needs Docker Desktop',
-                    `Start ${s.database} with one command: docker compose up -d`,
-                    s.extras.has('compose'),
-                );
-            }
-            if (dockerOwner.docker) {
-                add(
-                    'dockerfile',
-                    '$(package) Dockerfile',
-                    'for deployment',
-                    'Package your backend as a container to deploy it anywhere.',
-                    s.extras.has('dockerfile'),
-                );
-            }
-            if (t.ci || s.backend?.ci) {
-                add(
-                    'ci',
-                    '$(github-action) GitHub Actions CI',
-                    'build & test on push',
-                    'GitHub checks that your project builds every time you push.',
-                    s.extras.has('ci'),
-                );
-            }
-            if (usesNode({ template: t, backend: s.backend })) {
-                add(
-                    'prettier',
-                    '$(wand) Prettier',
-                    'code formatter',
-                    'Formats your code automatically so it always looks tidy.',
-                    s.extras.has('prettier'),
-                );
-            }
-            add(
-                'license',
-                '$(law) MIT License',
-                'open source',
-                'Lets others use your code freely. Uses your Git name as author.',
-                s.extras.has('license'),
-            );
-
             const result = await pick(pos, {
                 placeholder: 'Extras (Space to toggle, Enter to continue)',
                 items,
@@ -793,33 +628,22 @@ function extrasStep(sh: Shared): WizardStep {
             if (result === BACK || !result) {
                 return result === BACK ? BACK : undefined;
             }
-            const chosen = new Set<Extra | 'tailwind'>();
-            for (const item of result) {
-                chosen.add(item.value);
-            }
-            s.tailwind = !!t.tailwind && chosen.has('tailwind');
-            s.extras = new Set<Extra>();
-            for (const value of chosen) {
-                if (value !== 'tailwind') {
-                    s.extras.add(value);
-                }
-            }
-            // Publicar necesita un repositorio Git.
-            if (s.extras.has('publish')) {
-                s.extras.add('git');
-            }
+            setExtras(
+                s,
+                result.map(function (item) {
+                    return item.value;
+                }),
+            );
             return 'next';
         },
     };
 }
 
-/** 7. Gestor de paquetes. */
+/**
+ * 7. Package manager.
+ * @param sh shared data
+ */
 function packageManagerStep(sh: Shared): WizardStep {
-    const info: Record<PackageManagerId, string> = {
-        npm: 'Comes with Node.js. The safe default.',
-        pnpm: 'Fast and saves disk space.',
-        bun: 'Very fast all-in-one toolkit.',
-    };
     return {
         applies(s) {
             return !s.repeat && !!s.template && usesNode({ template: s.template, backend: s.backend });
@@ -827,17 +651,10 @@ function packageManagerStep(sh: Shared): WizardStep {
         async run(s, pos) {
             const items: Array<Item<PackageManager>> = [];
             for (const p of sh.pms) {
-                let description = `v${p.version}`;
-                if (!p.version) {
-                    description =
-                        p.id === 'npm'
-                            ? 'will be installed with Node.js'
-                            : 'not installed · DevStarter will install it';
-                }
                 items.push({
                     label: `$(package) ${p.id}`,
-                    description: recommend(s.beginner, p.id === 'npm', description),
-                    detail: s.beginner ? info[p.id] : undefined,
+                    description: recommend(s.beginner, p.id === 'npm', packageManagerStatus(p)),
+                    detail: s.beginner ? packageManagerInfo[p.id] : undefined,
                     value: p,
                 });
             }
@@ -851,28 +668,19 @@ function packageManagerStep(sh: Shared): WizardStep {
     };
 }
 
-/** 8. Carpeta donde crear el proyecto. */
+/**
+ * 8. Folder where the project is created.
+ * @param sh shared data
+ */
 function locationStep(sh: Shared): WizardStep {
     return {
         applies(s) {
             return !s.repeat || !s.parentDir;
         },
         async run(s, pos) {
-            const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-            const lastFolder = sh.ctx.globalState.get<string>(LAST_FOLDER_KEY);
-            const documents = path.join(os.homedir(), 'Documents');
-            const candidates: Array<[string, string | undefined]> = [
-                ['$(folder-opened) Current workspace', workspace],
-                ['$(history) Last used folder', lastFolder && fs.existsSync(lastFolder) ? lastFolder : undefined],
-                ['$(file-directory) Documents', fs.existsSync(documents) ? documents : undefined],
-            ];
-            const seen = new Set<string>();
             const items: Array<Item<string | undefined>> = [];
-            for (const [label, dir] of candidates) {
-                if (dir && !seen.has(dir.toLowerCase())) {
-                    seen.add(dir.toLowerCase());
-                    items.push({ label, description: dir, value: dir });
-                }
+            for (const option of folderOptions(sh.ctx.globalState)) {
+                items.push({ label: `$(${option.icon}) ${option.label}`, description: option.dir, value: option.dir });
             }
             items.push({ label: '$(search) Browse…', detail: 'Choose any folder on your computer', value: undefined });
 
@@ -891,19 +699,9 @@ function locationStep(sh: Shared): WizardStep {
                 if (result === BACK || !result?.[0]) {
                     return result === BACK ? BACK : undefined;
                 }
-                let dir = result[0].value;
+                const dir = result[0].value ?? (await browseFolder(s.parentDir));
                 if (!dir) {
-                    const picked = await vscode.window.showOpenDialog({
-                        canSelectFolders: true,
-                        canSelectFiles: false,
-                        canSelectMany: false,
-                        openLabel: 'Create project here',
-                        defaultUri: s.parentDir ? vscode.Uri.file(s.parentDir) : undefined,
-                    });
-                    dir = picked?.[0]?.fsPath;
-                    if (!dir) {
-                        continue; // canceló el diálogo: volvemos a la lista
-                    }
+                    continue; // * the dialog was cancelled: back to the list
                 }
                 s.parentDir = dir;
                 return 'next';
@@ -912,7 +710,23 @@ function locationStep(sh: Shared): WizardStep {
     };
 }
 
-/** 9. Nombre del proyecto. */
+/**
+ * Opens the system folder picker.
+ * @param current folder to start in
+ * @returns the chosen folder, or undefined if cancelled
+ */
+export async function browseFolder(current?: string): Promise<string | undefined> {
+    const picked = await vscode.window.showOpenDialog({
+        canSelectFolders: true,
+        canSelectFiles: false,
+        canSelectMany: false,
+        openLabel: 'Create project here',
+        defaultUri: current ? vscode.Uri.file(current) : undefined,
+    });
+    return picked?.[0]?.fsPath;
+}
+
+/** 9. Project name. */
 function nameStep(): WizardStep {
     return {
         applies() {
@@ -920,32 +734,13 @@ function nameStep(): WizardStep {
         },
         async run(s, pos) {
             const t = s.template!;
-            const base = t.nameStyle === 'snake' ? 'my_app' : 'my-app';
-            // Proponemos un nombre libre: my-app, my-app-2, my-app-3…
-            let value = s.name ?? base;
-            for (let i = 2; !s.name && fs.existsSync(path.join(s.parentDir!, value)); i++) {
-                value = `${base}${t.nameStyle === 'snake' ? '_' : '-'}${i}`;
-            }
-
-            /** Comprueba el nombre y, si no vale, sugiere uno que sí. */
-            function validate(v: string): string | undefined {
-                const error = validateProjectName(v, t.nameStyle);
-                if (error) {
-                    const suggestion = suggestName(v, t.nameStyle);
-                    const useful = suggestion && suggestion !== v && !validateProjectName(suggestion, t.nameStyle);
-                    return useful ? `${error}. How about "${suggestion}"?` : error;
-                }
-                if (fs.existsSync(path.join(s.parentDir!, v))) {
-                    return `A folder named "${v}" already exists there`;
-                }
-                return undefined;
-            }
-
             const result = await input(pos, {
                 prompt: `The folder will be created in ${s.parentDir}`,
-                placeholder: base,
-                value,
-                validate,
+                placeholder: t.nameStyle === 'snake' ? 'my_app' : 'my-app',
+                value: s.name ?? freeName(t, s.parentDir),
+                validate: function (v) {
+                    return checkName(v, t, s.parentDir);
+                },
             });
             if (result === BACK || result === undefined) {
                 return result;
@@ -956,7 +751,7 @@ function nameStep(): WizardStep {
     };
 }
 
-/** 10. Confirmación. */
+/** 10. Confirmation. */
 function confirmStep(): WizardStep {
     return {
         applies() {
@@ -967,7 +762,7 @@ function confirmStep(): WizardStep {
                 {
                     label: '$(rocket) Create project',
                     description: path.join(s.parentDir!, s.name!),
-                    // Principiantes: una frase normal. Programadores: el resumen técnico de una línea.
+                    // * Beginners get a plain sentence; experienced users the one-line technical summary.
                     detail: s.beginner
                         ? `${plainSummary(toChoice(s))} Anything missing on your computer gets installed for you.`
                         : describe(toChoice(s)),
@@ -985,42 +780,18 @@ function confirmStep(): WizardStep {
     };
 }
 
-// ─── Motor del asistente ────────────────────────────────────────────
+// ─── Wizard engine ──────────────────────────────────────────────────
 
 /**
- * Ejecuta el asistente completo.
- * @param ctx datos de la extensión
- * @returns la elección final, o undefined si se canceló
+ * Runs the whole quick-mode wizard.
+ * @param ctx data from the extension
+ * @returns the final choice, or undefined if cancelled
  */
 export async function runWizard(ctx: WizardContext): Promise<ProjectChoice | undefined> {
     const config = vscode.workspace.getConfiguration('devstarter');
     const [pms, git, gh] = await Promise.all([ctx.packageManagers, ctx.git, ctx.gh]);
-    const preferredPm = config.get<PackageManagerId>('defaultPackageManager', 'npm');
-    const level = config.get<string>('experienceLevel', '');
     const sh: Shared = { ctx, config, pms, git, gh, last: ctx.globalState.get<LastSetup>(LAST_SETUP_KEY) };
-
-    // Gestor por defecto: el preferido si está instalado; si no, npm.
-    let pm = pms[0];
-    for (const p of pms) {
-        if (p.id === preferredPm && p.version) {
-            pm = p;
-        }
-    }
-
-    const state: State = {
-        beginner: level ? level === 'beginner' : undefined,
-        askedLevel: false,
-        template: findTemplate(ctx.preselect),
-        typescript: true,
-        tailwind: true,
-        libraries: new Set<string>(),
-        extras: new Set<Extra>(['vscode']),
-        pm,
-        repeat: false,
-    };
-    if (git.version && config.get('initGit', true)) {
-        state.extras.add('git');
-    }
+    const state: State = { ...initialDraft(config, pms, git, ctx.preselect), askedLevel: false, repeat: false };
 
     const steps: WizardStep[] = [
         levelStep(sh),
@@ -1036,7 +807,7 @@ export async function runWizard(ctx: WizardContext): Promise<ProjectChoice | und
         confirmStep(),
     ];
 
-    // Recorre los pasos que aplican y recuerda el camino para poder volver atrás.
+    // * Walk the steps that apply, remembering the path so Back can retrace it.
     const history: number[] = [];
     let i = 0;
     while (i < steps.length) {
@@ -1065,69 +836,6 @@ export async function runWizard(ctx: WizardContext): Promise<ProjectChoice | und
     }
 
     const choice = toChoice(state);
-    await ctx.globalState.update(LAST_FOLDER_KEY, choice.parentDir);
-    const lastSetup: LastSetup = {
-        templateId: choice.template.id,
-        backendId: choice.backend?.id,
-        typescript: choice.typescript,
-        tailwind: choice.tailwind,
-        database: choice.database,
-        libraries: choice.libraries,
-        extras: choice.extras,
-        pmId: choice.pm.id,
-        parentDir: choice.parentDir,
-    };
-    await ctx.globalState.update(LAST_SETUP_KEY, lastSetup);
+    await rememberChoice(ctx.globalState, choice);
     return choice;
-}
-
-/**
- * Convierte el estado del asistente en la elección final, limpiando opciones que no aplican
- * (p. ej. una base de datos que el backend elegido no admite).
- * @param s estado del asistente
- */
-function toChoice(s: State): ProjectChoice {
-    const template = s.template!;
-    const backend = template.acceptsBackend ? s.backend : undefined;
-    const owner = databaseOwner({ template, backend });
-    const database = s.database && owner?.databases?.includes(s.database) ? s.database : undefined;
-    const node = usesNode({ template, backend });
-
-    const extras: Extra[] = [];
-    for (const e of s.extras) {
-        const valid =
-            (e !== 'compose' || needsServer(database)) &&
-            (e !== 'dockerfile' || !!(backend ?? template).docker) &&
-            (e !== 'prettier' || node) &&
-            (e !== 'ci' || !!template.ci || !!backend?.ci);
-        if (valid) {
-            extras.push(e);
-        }
-    }
-
-    // Solo las librerías que aplican a las plantillas elegidas.
-    const available = new Set<string>();
-    for (const { lib } of availableLibraries({ ...s, template, backend })) {
-        available.add(lib.id);
-    }
-    const libraries: string[] = [];
-    for (const id of s.libraries) {
-        if (available.has(id)) {
-            libraries.push(id);
-        }
-    }
-
-    return {
-        template,
-        backend,
-        typescript: !!template.languages && s.typescript,
-        tailwind: !!template.tailwind && s.tailwind,
-        database,
-        libraries,
-        extras,
-        pm: s.pm,
-        name: s.name!,
-        parentDir: s.parentDir!,
-        beginner: s.beginner ?? true,
-    };
 }

@@ -1,14 +1,14 @@
-// Tareas de VS Code (Terminal > Ejecutar tarea...).
+// VS Code tasks (Terminal > Run Task...).
 //
-// ── PUBLICAR (Microsoft Marketplace + Open VSX de una vez) ──────────────────────────────
-//  "DevStarter: Publish (ensayo)"            comprueba y empaqueta, sin publicar nada
-//  "DevStarter: Publish everywhere"          publica en las dos tiendas pidiendo los tokens
-//  "DevStarter: Publish everywhere (fast)"   igual, sin ejecutar los tests
-//  "DevStarter: Publish (tokens del sistema)" usa las variables VSCE_PAT y OVSX_PAT ya guardadas
+// ── PUBLISH (Microsoft Marketplace + Open VSX in one go) ─────────────────────────────────
+//  "DevStarter: Publish (ensayo)"            dry run: checks and packages, publishes nothing
+//  "DevStarter: Publish everywhere"          publishes to both stores, asking for the tokens
+//  "DevStarter: Publish everywhere (fast)"   same, without running the tests
+//  "DevStarter: Publish (tokens del sistema)" uses the VSCE_PAT and OVSX_PAT variables already saved
 //
-// Los tokens se piden en un cuadro (con la escritura oculta) y solo se pasan a ese proceso:
-// no se guardan en ningun fichero. Para guardarlos tu mismo, define las variables de usuario
-// VSCE_PAT y OVSX_PAT y usa la ultima tarea.
+// ! Tokens are asked for in an input box (typing hidden) and only passed to that process:
+// ! they are never written to any file. To store them yourself, define the VSCE_PAT and
+// OVSX_PAT user environment variables and use the last task.
 {
 	"version": "2.0.0",
 	"tasks": [

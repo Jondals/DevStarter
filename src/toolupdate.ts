@@ -1,15 +1,15 @@
 /**
  * toolupdate.ts
  * ─────────────
- * Actualizar herramientas (Node.js, Git, Python, pnpm…) comprobando que de verdad se actualizan.
+ * Updates tools (Node.js, Git, Python, pnpm…) and checks that they really got updated.
  *
- * El fallo que arregla: winget puede tener un catálogo más atrasado que la web oficial. Si
- * se pedía actualizar y winget no tenía nada nuevo, el paso terminaba "bien" sin cambiar
- * nada. Ahora cada actualización:
- *   1. ejecuta el actualizador (winget, brew, el propio programa…),
- *   2. vuelve a leer la versión instalada,
- *   3. si no ha cambiado, prueba una segunda vía (en Node.js: el instalador oficial),
- *   4. y si sigue igual, explica por qué en vez de mostrar un falso "✔".
+ * ! The bug it fixes: winget's catalog can lag behind the official website. When an
+ * update was requested and winget had nothing new, the step ended "fine" without changing
+ * anything. Now every update:
+ *   1. runs the updater (winget, brew, the program itself…),
+ *   2. reads the installed version again,
+ *   3. if it did not change, tries a second route (for Node.js: the official installer),
+ *   4. and if it is still the same, explains why instead of showing a fake "✔".
  */
 import * as cp from 'child_process';
 import * as crypto from 'crypto';
@@ -21,35 +21,35 @@ import { CommandStep, Logger } from './terminal';
 import { clearToolCache, Installer, refreshPath } from './tools';
 import { isNewer } from './updates';
 
-/** Códigos de salida de winget que significan "nada que hacer", no un error. */
+/** winget exit codes that mean "nothing to do", not an error. */
 export const wingetCodes = {
-    /** "No se encontró ninguna actualización disponible" (0x8A15002B). */
+    /** "No available upgrade found" (0x8A15002B). */
     noUpdate: 0x8a15002b,
-    /** "No se encontró un paquete instalado con winget" (0x8A150014). */
+    /** "No installed package found" with winget (0x8A150014). */
     notInstalled: 0x8a150014,
 };
 
-/** Qué hace falta saber para actualizar una herramienta. */
+/** What we need to know to update a tool. */
 export interface UpdateTarget {
-    /** Nombre para los mensajes ("Node.js"). */
+    /** Name for messages ("Node.js"). */
     name: string;
-    /** Versión instalada ahora. */
+    /** Version installed now. */
     current: string;
-    /** Última versión conocida (puede ser más nueva de lo que ofrece el actualizador). */
+    /** Latest known version (may be newer than what the updater offers). */
     latest?: string;
     installer: Installer;
-    /** Vuelve a leer la versión instalada (sin caché). */
+    /** Reads the installed version again (without cache). */
     detect: () => Promise<string | undefined>;
-    /** Segunda vía si el actualizador no cambia la versión. Devuelve true si lo intentó. */
+    /** Second route if the updater does not change the version. Returns true if it tried. */
     fallback?: (log: Logger) => Promise<boolean>;
-    /** Consejo extra si no se pudo actualizar (p. ej. "npm viene con Node.js"). */
+    /** Extra advice if it could not be updated (e.g. "npm comes with Node.js"). */
     hint?: string;
 }
 
 /**
- * Explica por qué una actualización no cambió la versión.
- * @param t herramienta
- * @param exitCode código con el que terminó el actualizador
+ * Explains why an update did not change the version.
+ * @param t tool
+ * @param exitCode exit code of the updater
  */
 export function unchangedReason(t: UpdateTarget, exitCode: number): string {
     const behind = isNewer(t.current, t.latest)
@@ -67,8 +67,8 @@ export function unchangedReason(t: UpdateTarget, exitCode: number): string {
 }
 
 /**
- * Crea el paso que actualiza una herramienta y comprueba el resultado.
- * @param t herramienta a actualizar
+ * Creates the step that updates a tool and checks the result.
+ * @param t tool to update
  */
 export function toolUpdateStep(t: UpdateTarget): CommandStep {
     return {
@@ -76,7 +76,7 @@ export function toolUpdateStep(t: UpdateTarget): CommandStep {
         title: t.installer.title,
         command: t.installer.command,
         cwd: os.homedir(),
-        // Si no se puede actualizar, se avisa y se sigue con lo demás.
+        // * If it cannot be updated, warn and carry on with the rest.
         optional: true,
         okExitCodes: [wingetCodes.noUpdate, wingetCodes.notInstalled, ...(t.installer.okExitCodes ?? [])],
         async verify(log, exitCode) {
@@ -85,12 +85,12 @@ export function toolUpdateStep(t: UpdateTarget): CommandStep {
                 reportChange(t, now!, log);
                 return;
             }
-            // Sin cambios. ¿Es que ya estaba al día?
+            // No change. Was it already up to date?
             if (!isNewer(t.current, t.latest)) {
                 log(`Already the latest version (${t.current})`);
                 return;
             }
-            // Hay una versión más nueva y el actualizador no la dio: segunda vía.
+            // There is a newer version and the updater did not provide it: second route.
             if (t.fallback && (await t.fallback(log))) {
                 now = await freshVersion(t);
                 if (isNewer(t.current, now)) {
@@ -104,8 +104,8 @@ export function toolUpdateStep(t: UpdateTarget): CommandStep {
 }
 
 /**
- * Vuelve a leer la versión instalada, con el PATH y la caché al día.
- * @param t herramienta
+ * Reads the installed version again, with an up-to-date PATH and cache.
+ * @param t tool
  */
 async function freshVersion(t: UpdateTarget): Promise<string | undefined> {
     await refreshPath(true);
@@ -114,10 +114,10 @@ async function freshVersion(t: UpdateTarget): Promise<string | undefined> {
 }
 
 /**
- * Escribe "Node.js 24.19.0 → 24.21.0" (y avisa si aún no es la última).
- * @param t herramienta
- * @param now versión nueva
- * @param log dónde escribir
+ * Writes "Node.js 24.19.0 → 24.21.0" (and warns if it is still not the latest).
+ * @param t tool
+ * @param now new version
+ * @param log where to write
  */
 function reportChange(t: UpdateTarget, now: string, log: Logger): void {
     log(`${t.name} ${t.current} → ${now}`);
@@ -126,13 +126,13 @@ function reportChange(t: UpdateTarget, now: string, log: Logger): void {
     }
 }
 
-// ─── Node.js: instalador oficial ────────────────────────────────────
+// ─── Node.js: official installer ────────────────────────────────────
 
 /**
- * Busca en el texto de SHASUMS256.txt el hash de un fichero.
- * Cada línea es "<sha256>  <nombre>".
- * @param text contenido de SHASUMS256.txt
- * @param fileName nombre del fichero a buscar
+ * Finds the hash of a file in the text of SHASUMS256.txt.
+ * Each line is "<sha256>  <name>".
+ * @param text contents of SHASUMS256.txt
+ * @param fileName name of the file to look for
  */
 export function parseShaSums(text: string, fileName: string): string | undefined {
     for (const line of text.split(/\r?\n/)) {
@@ -145,25 +145,25 @@ export function parseShaSums(text: string, fileName: string): string | undefined
 }
 
 /**
- * SHA-256 de unos datos, en hexadecimal.
- * @param data contenido
+ * SHA-256 of some data, in hexadecimal.
+ * @param data contents
  */
 export function sha256(data: Buffer): string {
     return crypto.createHash('sha256').update(data).digest('hex');
 }
 
-/** Arquitectura con el nombre que usa nodejs.org. */
+/** Architecture with the name nodejs.org uses. */
 function nodeArch(): string {
     return process.arch === 'arm64' ? 'arm64' : 'x64';
 }
 
 /**
- * Descarga el instalador oficial de Node.js (.msi), comprueba su SHA-256 contra el que publica
- * nodejs.org y lo ejecuta. Windows pedirá permiso de administrador.
- * Es la segunda vía cuando winget aún no tiene la última versión.
- * @param version versión a instalar, p. ej. "24.21.0"
- * @param log dónde escribir los detalles
- * @returns true si se ejecutó el instalador
+ * Downloads the official Node.js installer (.msi), checks its SHA-256 against the one published by
+ * nodejs.org and runs it. ! Windows will ask for administrator permission.
+ * It is the second route when winget does not have the latest version yet.
+ * @param version version to install, e.g. "24.21.0"
+ * @param log where to write the details
+ * @returns true if the installer ran
  */
 export async function installNodeFromOfficialMsi(version: string, log: Logger): Promise<boolean> {
     if (process.platform !== 'win32' || !/^\d+\.\d+\.\d+$/.test(version)) {
@@ -176,7 +176,7 @@ export async function installNodeFromOfficialMsi(version: string, log: Logger): 
     if (!expected) {
         throw new Error(`nodejs.org does not list ${file}`);
     }
-    // El instalador de Node.js pesa unos 30 MB: se aceptan hasta 100 MB.
+    // ! The Node.js installer weighs about 30 MB: accept 100 MB at most.
     const data = await fetchBuffer(`${base}/${file}`, { timeoutMs: 300000, maxBytes: 100 * 1024 * 1024 });
     if (sha256(data) !== expected) {
         throw new Error(
@@ -188,7 +188,7 @@ export async function installNodeFromOfficialMsi(version: string, log: Logger): 
     fs.writeFileSync(target, data);
     try {
         const code = await runInstaller('msiexec', ['/i', target, '/passive', '/norestart']);
-        // 3010 = instalado, pero Windows pide reiniciar en algún momento.
+        // ? 3010 = installed, but Windows asks to restart at some point.
         if (code !== 0 && code !== 3010) {
             throw new Error(
                 code === 1602 || code === 1223
@@ -203,10 +203,10 @@ export async function installNodeFromOfficialMsi(version: string, log: Logger): 
 }
 
 /**
- * Ejecuta un instalador (sin shell) y espera a que termine.
- * @param program programa
- * @param args argumentos
- * @returns el código de salida
+ * Runs an installer (without a shell) and waits for it to finish.
+ * @param program program
+ * @param args arguments
+ * @returns the exit code
  */
 function runInstaller(program: string, args: string[]): Promise<number> {
     return new Promise(function (resolve, reject) {

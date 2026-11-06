@@ -2,27 +2,27 @@
 /**
  * scripts/publish.mjs
  * ───────────────────
- * Publica DevStarter en el Marketplace de Microsoft Y en Open VSX de una sola vez.
- * Open VSX es la tienda que usan Cursor, Windsurf, VSCodium, Trae y otros IDEs.
+ * Publishes DevStarter to the Microsoft Marketplace AND to Open VSX in one go.
+ * Open VSX is the store used by Cursor, Windsurf, VSCodium, Trae and other IDEs.
  *
- *   pnpm publish:check         → ensaya todo SIN publicar (comprobaciones + empaquetado)
- *   pnpm publish:all           → publica en las dos tiendas
- *   pnpm publish:marketplace   → solo Microsoft
- *   pnpm publish:openvsx       → solo Open VSX
+ *   pnpm publish:check         → rehearses everything WITHOUT publishing (checks + packaging)
+ *   pnpm publish:all           → publishes to both stores
+ *   pnpm publish:marketplace   → Microsoft only
+ *   pnpm publish:openvsx       → Open VSX only
  *
- * Opciones:  --dry-run  --only marketplace|openvsx  --skip-tests  --skip-checks  --yes
+ * Options:  --dry-run  --only marketplace|openvsx  --skip-tests  --skip-checks  --yes
  *
- * Que hace, en orden:
- *   1. Comprueba que el CHANGELOG tiene la entrada de la version del package.json.
- *   2. Mira en cada tienda si esa version YA esta publicada (no se puede subir dos veces).
- *   3. Pasa las comprobaciones (tipos, lint, formato y tests) salvo --skip-checks / --skip-tests.
- *   4. Empaqueta UNA sola vez el .vsix y sube ese mismo fichero a las dos tiendas.
- *   5. Comprueba en las tiendas que la version nueva aparece y da los enlaces.
+ * What it does, in order:
+ *   1. Checks that the CHANGELOG has an entry for the version in package.json.
+ *   2. Asks each store whether that version is ALREADY published (it cannot be uploaded twice).
+ *   3. Runs the checks (types, lint, formatting and tests) unless --skip-checks / --skip-tests.
+ *   4. Packages the .vsix ONCE and uploads that same file to both stores.
+ *   5. Checks that the new version shows up in the stores and prints the links.
  *
- * Los tokens se leen de las variables de entorno VSCE_PAT (Microsoft) y OVSX_PAT (Open VSX), o se
- * piden por teclado sin mostrarse. Nunca se guardan ni se escriben en pantalla. Desde VS Code, las
- * tareas "DevStarter: Publish ..." los piden en un cuadro y los pasan solo a este proceso.
- * Hace falta Node.js 20 o superior.
+ * ! Tokens are read from the VSCE_PAT (Microsoft) and OVSX_PAT (Open VSX) environment variables, or
+ * ! typed in without being shown. They are never stored or printed. From VS Code, the
+ * "DevStarter: Publish ..." tasks ask for them in an input box and pass them only to this process.
+ * Requires Node.js 20 or newer.
  */
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -31,7 +31,7 @@ import { pathToFileURL } from 'node:url';
 const root = new URL('../', import.meta.url);
 const manifest = JSON.parse(readFileSync(new URL('package.json', root), 'utf8'));
 
-/** Tiendas a las que se publica: nombre, variable del token y como comprobar una version. */
+/** Stores to publish to: name, token variable and how to check for a version. */
 const stores = {
     marketplace: {
         label: 'Microsoft Marketplace',
@@ -47,44 +47,44 @@ const stores = {
     },
 };
 
-// ── Colores sencillos para la consola ───────────────────────────────
+// ── Simple console colors ───────────────────────────────────────────
 
 const colors = { green: 32, red: 31, yellow: 33, cyan: 36, gray: 90, bold: 1 };
 
 /**
- * Pinta un texto con un color ANSI.
- * @param {string} name color de la tabla
- * @param {string} text texto
+ * Paints a text with an ANSI color.
+ * @param {string} name color from the table
+ * @param {string} text text
  */
 function paint(name, text) {
     return '\x1b[' + colors[name] + 'm' + text + '\x1b[0m';
 }
 
-/** Escribe un titulo de seccion. */
+/** Prints a section title. */
 function section(text) {
     console.log('\n' + paint('cyan', '◈ ' + text));
 }
 
-/** Escribe una linea de exito. */
+/** Prints a success line. */
 function ok(text) {
     console.log(paint('green', '  ✔ ') + text);
 }
 
-/** Escribe una linea de aviso. */
+/** Prints a warning line. */
 function warn(text) {
     console.log(paint('yellow', '  ▲ ') + text);
 }
 
-/** Escribe una linea de error. */
+/** Prints an error line. */
 function fail(text) {
     console.log(paint('red', '  ✗ ') + text);
 }
 
-// ── Argumentos ──────────────────────────────────────────────────────
+// ── Arguments ───────────────────────────────────────────────────────
 
 /**
- * Lee los argumentos de la linea de comandos.
- * @param {string[]} argv argumentos sin "node" ni el nombre del script
+ * Parses the command-line arguments.
+ * @param {string[]} argv arguments without "node" and the script name
  */
 export function parseArgs(argv) {
     const options = { dryRun: false, only: undefined, skipTests: false, skipChecks: false, yes: false };
@@ -110,14 +110,14 @@ export function parseArgs(argv) {
     return options;
 }
 
-// ── Utilidades ──────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────
 
 /**
- * Ejecuta un comando mostrando su salida y guardandola (para reconocer errores conocidos).
- * Los tokens viajan en variables de entorno, nunca en los argumentos.
- * @param {string} command programa
- * @param {string[]} args argumentos
- * @param {Record<string, string>} extraEnv variables de entorno adicionales
+ * Runs a command, showing its output and keeping it (to recognize known errors).
+ * ! Tokens travel in environment variables, never in the arguments.
+ * @param {string} command program
+ * @param {string[]} args arguments
+ * @param {Record<string, string>} extraEnv additional environment variables
  * @returns {Promise<{ code: number, output: string }>}
  */
 function run(command, args, extraEnv = {}) {
@@ -137,9 +137,9 @@ function run(command, args, extraEnv = {}) {
 }
 
 /**
- * Pregunta algo por teclado.
- * @param {string} question pregunta
- * @param {boolean} secret si es true, lo que se escribe no se muestra (para tokens)
+ * Asks a question on the keyboard.
+ * @param {string} question question
+ * @param {boolean} secret when true, the typed text is hidden (for tokens)
  */
 function ask(question, secret = false) {
     return new Promise(function (resolve) {
@@ -177,20 +177,20 @@ function ask(question, secret = false) {
     });
 }
 
-// ── Comprobaciones previas ──────────────────────────────────────────
+// ── Pre-flight checks ───────────────────────────────────────────────
 
 /**
- * ¿El CHANGELOG tiene una entrada para esta version?
- * @param {string} changelog contenido de CHANGELOG.md
- * @param {string} version version del package.json
+ * Whether the CHANGELOG has an entry for this version.
+ * @param {string} changelog contents of CHANGELOG.md
+ * @param {string} version version from package.json
  */
 export function hasChangelogEntry(changelog, version) {
     return changelog.includes('## [' + version + ']');
 }
 
 /**
- * ¿Esta version ya esta publicada en Microsoft?
- * @param {string} version version a buscar
+ * Whether this version is already published on the Microsoft Marketplace.
+ * @param {string} version version to look for
  */
 async function publishedInMarketplace(version) {
     const response = await fetch('https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery', {
@@ -214,8 +214,8 @@ async function publishedInMarketplace(version) {
 }
 
 /**
- * ¿Esta version ya esta publicada en Open VSX?
- * @param {string} version version a buscar
+ * Whether this version is already published on Open VSX.
+ * @param {string} version version to look for
  */
 async function publishedInOpenVsx(version) {
     const base = 'https://open-vsx.org/api/' + manifest.publisher + '/' + manifest.name;
@@ -228,8 +228,8 @@ async function publishedInOpenVsx(version) {
 }
 
 /**
- * Mira si la version ya esta publicada en una tienda. Si la consulta falla, no bloquea (devuelve undefined).
- * @param {string} store marketplace u openvsx
+ * Checks whether the version is already published in a store. If the query fails it does not block (returns undefined).
+ * @param {string} store marketplace or openvsx
  * @param {string} version version
  */
 export async function alreadyPublished(store, version) {
@@ -243,8 +243,8 @@ export async function alreadyPublished(store, version) {
 }
 
 /**
- * Pasa las comprobaciones de calidad (tipos, lint, formato y tests).
- * @param {{ skipTests: boolean }} options opciones
+ * Runs the quality checks (types, lint, formatting and tests).
+ * @param {{ skipTests: boolean }} options options
  */
 async function runChecks(options) {
     const steps = [
@@ -267,9 +267,9 @@ async function runChecks(options) {
     return true;
 }
 
-// ── Publicacion ─────────────────────────────────────────────────────
+// ── Publishing ──────────────────────────────────────────────────────
 
-/** Consejos para los errores mas habituales de cada tienda. */
+/** Advice for the most common errors of each store. */
 const hints = [
     [/Unknown publisher|namespace .* not found|not a valid namespace/i, 'El namespace "' + manifest.publisher + '" no existe en Open VSX. Crealo una vez con: pnpm exec ovsx create-namespace ' + manifest.publisher + ' -p <token>'],
     [/401|403|Access Denied|Unauthorized|invalid.*token|Personal Access Token/i, 'El token no sirve o caduco. Revisa que sea del publicador correcto y que tenga permiso para publicar.'],
@@ -278,10 +278,10 @@ const hints = [
 ];
 
 /**
- * Publica el .vsix en una tienda.
- * @param {string} store marketplace u openvsx
- * @param {string} vsix ruta del paquete
- * @param {string} token token de esa tienda
+ * Publishes the .vsix to a store.
+ * @param {string} store marketplace or openvsx
+ * @param {string} vsix path of the package
+ * @param {string} token token for that store
  */
 async function publishTo(store, vsix, token) {
     const info = stores[store];
@@ -306,10 +306,10 @@ async function publishTo(store, vsix, token) {
 }
 
 /**
- * Espera a que una tienda muestre la version nueva.
- * @param {string} store marketplace u openvsx
+ * Waits until a store shows the new version.
+ * @param {string} store marketplace or openvsx
  * @param {string} version version
- * @param {number} seconds segundos maximos de espera
+ * @param {number} seconds maximum seconds to wait
  */
 async function waitUntilVisible(store, version, seconds) {
     const deadline = Date.now() + seconds * 1000;
@@ -324,9 +324,9 @@ async function waitUntilVisible(store, version, seconds) {
     return false;
 }
 
-// ── Programa principal ──────────────────────────────────────────────
+// ── Main program ────────────────────────────────────────────────────
 
-/** Orquesta todo el proceso. Devuelve el codigo de salida. */
+/** Orchestrates the whole process. Returns the exit code. */
 async function main() {
     const options = parseArgs(process.argv.slice(2));
     const version = manifest.version;
@@ -337,7 +337,7 @@ async function main() {
         warn('MODO ENSAYO: se comprueba y se empaqueta, pero no se publica nada.');
     }
 
-    // 1. CHANGELOG
+    // * 1. CHANGELOG
     section('1. CHANGELOG');
     if (!hasChangelogEntry(readFileSync(new URL('CHANGELOG.md', root), 'utf8'), version)) {
         fail('CHANGELOG.md no tiene la entrada "## [' + version + ']". Escribela antes de publicar.');
@@ -345,7 +345,7 @@ async function main() {
     }
     ok('Hay entrada para la version ' + version);
 
-    // 2. ¿Ya publicada?
+    // * 2. Already published?
     section('2. Estado en las tiendas');
     const pending = [];
     for (const store of targets) {
@@ -362,7 +362,7 @@ async function main() {
         return 1;
     }
 
-    // 3. Comprobaciones
+    // * 3. Checks
     section('3. Comprobaciones de calidad');
     if (options.skipChecks) {
         warn('Saltadas (--skip-checks).');
@@ -370,7 +370,7 @@ async function main() {
         return 1;
     }
 
-    // 4. Empaquetado (una sola vez, el mismo fichero para las dos tiendas)
+    // * 4. Packaging (only once: the same file goes to both stores)
     section('4. Empaquetado');
     const vsix = manifest.name + '-' + version + '.vsix';
     const packaged = await run('pnpm', ['exec', 'vsce', 'package', '--no-dependencies', '-o', vsix]);
@@ -387,7 +387,7 @@ async function main() {
         return 0;
     }
 
-    // 5. Tokens y confirmacion
+    // * 5. Tokens and confirmation
     section('5. Tokens');
     const tokens = {};
     for (const store of pending) {
@@ -420,20 +420,20 @@ async function main() {
         }
     }
 
-    // 6. Publicar: si una tienda falla, se intenta igualmente la otra
+    // * 6. Publish: if one store fails, the other one is still attempted
     section('6. Publicando');
     const results = {};
     for (const store of pending) {
         results[store] = await publishTo(store, vsix, tokens[store]);
     }
 
-    // 7. Verificar
+    // * 7. Verify
     section('7. Verificando en las tiendas');
     for (const store of pending) {
         if (!results[store]) {
             continue;
         }
-        // Open VSX publica al instante; Microsoft valida el paquete y puede tardar unos minutos.
+        // ? Open VSX publishes instantly; Microsoft validates the package and may take a few minutes.
         const seconds = store === 'openvsx' ? 60 : 90;
         if (await waitUntilVisible(store, version, seconds)) {
             ok(stores[store].label + ': la version ' + version + ' ya es visible');
@@ -455,7 +455,7 @@ async function main() {
     return 0;
 }
 
-// Solo se ejecuta si se llama directamente (no al importar las funciones desde otro fichero).
+// Only runs when called directly (not when another file imports its functions).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     main()
         .then(function (code) {

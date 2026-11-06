@@ -1,21 +1,21 @@
 /**
  * templates/presets.ts
  * ────────────────────
- * "Empieza desde una idea": combinaciones listas para quien no sabe programar.
- * En vez de elegir "Vite + Three.js + GSAP", la persona elige "Una web en 3D"
- * y DevStarter decide la plantilla, las librerías y las opciones adecuadas.
+ * "Start from an idea": ready-made combinations for people who cannot code yet.
+ * Instead of choosing "Vite + Three.js + GSAP", the person picks "A 3D website" and
+ * DevStarter pre-fills the template, libraries and options (all still editable in the wizard).
  */
 import { Database } from '../scaffold/database';
 
-/** Una idea de proyecto con todo decidido. */
+/** A project idea with everything pre-decided. */
 export interface Preset {
     id: string;
     label: string;
-    /** Icono de VS Code (codicon). */
+    /** VS Code icon (codicon). */
     icon: string;
-    /** Qué se va a crear, en pocas palabras. */
+    /** What will be created, in a few words. */
     description: string;
-    /** Para qué sirve, explicado sin tecnicismos. */
+    /** What it is for, explained without jargon. */
     detail: string;
     template: string;
     backend?: string;

@@ -1,17 +1,17 @@
 /**
  * scaffold/files.ts
  * ─────────────────
- * Pequeñas utilidades para crear y modificar ficheros de los proyectos generados:
- * escribir con carpetas, editar JSON y .env, completar .gitignore y ajustar pnpm.
+ * Small helpers to create and change files of the generated projects:
+ * write with folders, edit JSON and .env, complete .gitignore and tweak pnpm.
  */
 import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * Escribe un fichero creando las carpetas que falten.
- * Quita el salto de línea inicial que dejan las plantillas escritas con `...`.
- * @param file ruta completa del fichero
- * @param content contenido
+ * Writes a file, creating any missing folders.
+ * Removes the leading line break left by templates written with `...`.
+ * @param file full path of the file
+ * @param content contents
  */
 export function write(file: string, content: string): void {
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -19,9 +19,9 @@ export function write(file: string, content: string): void {
 }
 
 /**
- * Devuelve la ruta del primer candidato que exista dentro de `dir`.
- * @param dir carpeta donde buscar
- * @param candidates nombres de fichero, en orden de preferencia
+ * Returns the path of the first candidate that exists inside `dir`.
+ * @param dir folder to look in
+ * @param candidates file names, in order of preference
  */
 export function firstExisting(dir: string, candidates: string[]): string | undefined {
     for (const candidate of candidates) {
@@ -34,9 +34,9 @@ export function firstExisting(dir: string, candidates: string[]): string | undef
 }
 
 /**
- * Lee un JSON, deja que `change` lo modifique y lo vuelve a guardar.
- * @param file ruta del fichero JSON (si no existe, se empieza con {})
- * @param change función que modifica el objeto
+ * Reads a JSON file, lets `change` modify it and saves it again.
+ * @param file path of the JSON file (if it does not exist, starts with {})
+ * @param change function that modifies the object
  */
 export function patchJson(file: string, change: (json: Record<string, any>) => void): void {
     const json = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
@@ -45,10 +45,10 @@ export function patchJson(file: string, change: (json: Record<string, any>) => v
 }
 
 /**
- * Cambia (o añade) `CLAVE=valor` en el contenido de un .env, aunque la línea esté comentada.
- * @param content contenido actual del .env
- * @param key nombre de la variable
- * @param value nuevo valor
+ * Changes (or adds) `KEY=value` in the contents of a .env, even if the line is commented out.
+ * @param content current contents of the .env
+ * @param key variable name
+ * @param value new value
  */
 export function setEnvValue(content: string, key: string, value: string): string {
     const pattern = new RegExp(`^#?\\s*${key}=.*$`, 'm');
@@ -59,9 +59,9 @@ export function setEnvValue(content: string, key: string, value: string): string
 }
 
 /**
- * Aplica varios valores a un fichero .env si existe.
- * @param file ruta del .env
- * @param values variables a cambiar
+ * Applies several values to a .env file if it exists.
+ * @param file path of the .env
+ * @param values variables to change
  */
 export function updateEnvFile(file: string, values: Record<string, string>): void {
     if (!fs.existsSync(file)) {
@@ -75,9 +75,9 @@ export function updateEnvFile(file: string, values: Record<string, string>): voi
 }
 
 /**
- * Añade líneas al final de un fichero de texto, asegurando el salto de línea anterior.
- * @param file fichero a ampliar (se crea si no existe)
- * @param text texto a añadir
+ * Appends lines to a text file, making sure the previous line ends with a line break.
+ * @param file file to extend (created if it does not exist)
+ * @param text text to append
  */
 export function appendLines(file: string, text: string): void {
     const content = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
@@ -86,15 +86,15 @@ export function appendLines(file: string, text: string): void {
 }
 
 /**
- * pnpm 10+ no ejecuta los scripts de instalación de las dependencias salvo que se aprueben.
- * Algunos paquetes nativos (como better-sqlite3) los necesitan para funcionar.
- * @param dir carpeta del proyecto
- * @param pkg paquete a aprobar
+ * ! pnpm 10+ does not run the dependencies' install scripts unless they are approved.
+ * Some native packages (like better-sqlite3) need them to work.
+ * @param dir project folder
+ * @param pkg package to approve
  */
 export function allowPnpmBuild(dir: string, pkg: string): void {
     const file = path.join(dir, 'pnpm-workspace.yaml');
     let content = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-    // Quita una entrada anterior del mismo paquete (p. ej. "set this to true or false").
+    // Removes a previous entry of the same package (e.g. "set this to true or false").
     content = content.replace(new RegExp(`^\\s+${pkg}:.*\\n?`, 'm'), '');
     if (/^allowBuilds:/m.test(content)) {
         content = content.replace(/^allowBuilds:.*$/m, `allowBuilds:\n  ${pkg}: true`);
@@ -105,10 +105,10 @@ export function allowPnpmBuild(dir: string, pkg: string): void {
 }
 
 /**
- * pnpm 11 vuelve a comprobar las dependencias en cada "pnpm dev" y falla si alguna
- * trae scripts de build sin aprobar (esbuild, sharp…). Con esto solo avisa.
- * También evita que pnpm busque un workspace en carpetas superiores.
- * @param dir carpeta del proyecto
+ * ! pnpm 11 checks the dependencies again on every "pnpm dev" and fails if any of them
+ * brings unapproved build scripts (esbuild, sharp…). With this it only warns.
+ * It also stops pnpm from looking for a workspace in parent folders.
+ * @param dir project folder
  */
 export function relaxPnpmBuilds(dir: string): void {
     const file = path.join(dir, 'pnpm-workspace.yaml');
@@ -119,19 +119,19 @@ export function relaxPnpmBuilds(dir: string): void {
 }
 
 /**
- * Normaliza una entrada de .gitignore: "node_modules" equivale a "/node_modules/".
- * @param entry línea del .gitignore
+ * Normalizes a .gitignore entry: "node_modules" is the same as "/node_modules/".
+ * @param entry .gitignore line
  */
 function normalizeIgnore(entry: string): string {
     return entry.trim().replace(/^\/|\/$/g, '');
 }
 
 /**
- * Se asegura de que .gitignore contiene las entradas indicadas.
- * Algunos generadores (p. ej. Nest con --skip-git) no lo crean, y sin él
- * el primer commit incluiría node_modules entero.
- * @param dir carpeta con el .gitignore
- * @param entries entradas que deben estar
+ * Makes sure .gitignore contains the given entries.
+ * ! Some generators (e.g. Nest with --skip-git) do not create it, and without it
+ * the first commit would include the whole node_modules.
+ * @param dir folder with the .gitignore
+ * @param entries entries that must be there
  */
 export function ensureGitignore(dir: string, entries: string[]): void {
     const file = path.join(dir, '.gitignore');
@@ -149,8 +149,8 @@ export function ensureGitignore(dir: string, entries: string[]): void {
 }
 
 /**
- * "mi-app" → "mi_app" (válido como nombre de base de datos o de paquete Python/Dart).
- * @param name nombre del proyecto
+ * "my-app" → "my_app" (valid as a database name or a Python/Dart package name).
+ * @param name project name
  */
 export function snakeCase(name: string): string {
     const result = name

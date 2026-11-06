@@ -1,6 +1,6 @@
-// Ejecuta los tests dentro de la version MINIMA de VS Code que declara "engines.vscode".
-// Uso: pnpm test:min
-// Asi se comprueba de verdad que la extension funciona en los IDEs derivados mas antiguos.
+// Runs the tests inside the MINIMUM VS Code version declared in "engines.vscode".
+// Usage: pnpm test:min
+// This really proves that the extension works on the oldest derived IDEs.
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 

@@ -1,40 +1,40 @@
 /**
  * test/helpers.ts
  * ───────────────
- * Utilidades compartidas por los tests: simulan las ventanas de VS Code (listas, campos de
- * texto, terminal, notificaciones) para ejecutar la extensión "como lo haría una persona",
- * y pequeñas ayudas (esperar, borrar carpetas temporales, memoria falsa de VS Code).
+ * Helpers shared by the tests: they fake VS Code's windows (lists, text fields,
+ * terminal, notifications) to run the extension "the way a person would",
+ * plus small aids (waiting, deleting temporary folders, a fake VS Code memento).
  */
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { stripAnsi } from '../ui';
 
-// Se reexporta para que los tests lo importen desde un único sitio.
+// Re-exported so the tests import it from a single place.
 export { wait } from '../util';
 
-/** Qué hace la "persona" en una lista. */
+/** What the "person" does in a list. */
 export type Action =
-    | { labels: string[] } // elegir estas opciones (por su texto)
-    | { index: number } // elegir la opción número N
-    | 'defaults' // aceptar lo que ya viene marcado
-    | 'back' // pulsar "atrás"
-    | 'cancel'; // cerrar
+    | { labels: string[] } // pick these options (by their text)
+    | { index: number } // pick option number N
+    | 'defaults' // accept what is already selected
+    | 'back' // press "Back"
+    | 'cancel'; // close
 
-/** Decide la acción a partir del texto de la lista (placeholder) y sus opciones. */
+/** Decides the action from the list text (placeholder) and its options. */
 export type Script = (placeholder: string, items: readonly vscode.QuickPickItem[]) => Action;
 
 /**
- * Texto de una opción sin el icono del principio ("$(symbol-event) React" → "React").
- * @param item opción de la lista
+ * Text of an option without its leading icon ("$(symbol-event) React" → "React").
+ * @param item list option
  */
 export function plainLabel(item: vscode.QuickPickItem): string {
     return item.label.replace(/^\$\([^)]+\)\s*/, '');
 }
 
 /**
- * Opciones elegibles (sin separadores).
- * @param items opciones de la lista
+ * Selectable options (no separators).
+ * @param items list options
  */
 export function selectable(items: readonly vscode.QuickPickItem[]): vscode.QuickPickItem[] {
     return items.filter(function (i) {
@@ -42,7 +42,7 @@ export function selectable(items: readonly vscode.QuickPickItem[]): vscode.Quick
     });
 }
 
-/** Funciones de VS Code que sustituimos, para restaurarlas al terminar. */
+/** VS Code functions we replace, to restore them afterwards. */
 const originals = {
     createQuickPick: vscode.window.createQuickPick,
     createInputBox: vscode.window.createInputBox,
@@ -54,16 +54,16 @@ const originals = {
     showErrorMessage: vscode.window.showErrorMessage,
 };
 
-/** Restaura todas las funciones originales de VS Code. */
+/** Restores every original VS Code function. */
 export function restoreWindow(): void {
     Object.assign(vscode.window, originals);
 }
 
 /**
- * Sustituye createQuickPick y createInputBox por versiones guiadas por un guion.
- * @param script decide qué elegir en cada lista
- * @param name nombre que se escribe en el campo de texto
- * @returns lista de placeholders vistos, en orden (para comprobar el recorrido)
+ * Replaces createQuickPick and createInputBox with versions driven by a script.
+ * @param script decides what to pick in each list
+ * @param name name typed into the text field
+ * @returns placeholders seen, in order (to check the path taken)
  */
 export function installFakeInputs(script: Script, name: string): string[] {
     const seen: string[] = [];
@@ -165,7 +165,7 @@ export function installFakeInputs(script: Script, name: string): string[] {
     return seen;
 }
 
-/** Notificaciones capturadas (en vez de mostrarse). */
+/** Captured notifications (instead of being shown). */
 export function silenceMessages(): string[] {
     const messages: string[] = [];
     const window = vscode.window as any;
@@ -179,8 +179,8 @@ export function silenceMessages(): string[] {
 }
 
 /**
- * Sustituye createTerminal: abre el Pseudoterminal y guarda todo lo que escribe.
- * @returns función que devuelve la salida acumulada (sin colores)
+ * Replaces createTerminal: opens the Pseudoterminal and keeps everything it writes.
+ * @returns function that returns the accumulated output (without colors)
  */
 export function captureTerminal(): () => string {
     let output = '';
@@ -198,7 +198,7 @@ export function captureTerminal(): () => string {
     };
 }
 
-/** Memento en memoria para simular el almacenamiento de VS Code. */
+/** In-memory Memento that fakes VS Code storage. */
 export function memoryMemento(): vscode.Memento {
     const data = new Map<string, unknown>();
     return {
@@ -215,8 +215,8 @@ export function memoryMemento(): vscode.Memento {
 }
 
 /**
- * Intercepta vscode.openFolder para que los tests no abran carpetas (recargarían la ventana de pruebas).
- * @returns las carpetas que se intentó abrir y una función para restaurar el comando
+ * Intercepts vscode.openFolder so tests do not open folders (that would reload the test window).
+ * @returns the folders it tried to open and a function to restore the command
  */
 export function interceptOpenFolder(): { calls: string[]; restore: () => void } {
     const original = vscode.commands.executeCommand;
@@ -236,7 +236,7 @@ export function interceptOpenFolder(): { calls: string[]; restore: () => void } 
     };
 }
 
-/** La API que devuelve activate() (para Recent Projects). */
+/** The API returned by activate() (for Recent Projects). */
 export async function devstarterApi(): Promise<any> {
     for (const ext of vscode.extensions.all) {
         if (ext.packageJSON.name === 'devstarter') {
@@ -247,14 +247,14 @@ export async function devstarterApi(): Promise<any> {
 }
 
 /**
- * Borra una carpeta temporal sin fallar: en Windows puede seguir bloqueada unos segundos
- * (el antivirus o el vigilante de ficheros de VS Code), y eso no es un fallo del test.
- * @param dir carpeta a borrar
+ * Deletes a temporary folder without failing: on Windows it may stay locked for a few seconds
+ * (antivirus or VS Code's file watcher), and that is not a test failure.
+ * @param dir folder to delete
  */
 export function removeQuietly(dir: string): void {
     try {
         fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
     } catch {
-        // Se quedará en la carpeta temporal del sistema, que Windows limpia solo.
+        // It stays in the system temp folder, which Windows cleans up by itself.
     }
 }

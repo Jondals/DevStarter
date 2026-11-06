@@ -1,4 +1,21 @@
 # Change Log
+## [Unreleased]
+
+### A visual New Project wizard
+- **New Project now opens a full page** instead of a chain of lists: cards for every idea and technology with live search and category filters, then one screen where everything is editable (language, backend, database, libraries, extras, package manager, folder and name) with a live summary and a big **Create project** button. Works in light, dark and high-contrast themes.
+- The keyboard-driven lists are still there: **Quick mode** link in the page, or `"devstarter.wizardStyle": "quick"` to make it the default.
+
+### Ideas no longer lock you in
+- Picking an idea ("A 3D website", "A blog"…) now only **pre-fills** the answers. Every step is still shown, so libraries, extras and **Git** can be changed. Before, ideas skipped straight to the folder and name, which is why the option to create a Git repository sometimes never appeared.
+
+### Fixes
+- **"running scripts is disabled on this system" on fresh Windows installs.** PowerShell blocks `npm.ps1`, so the dev server terminals failed. DevStarter now detects it, starts the servers through `npm.cmd` / `pnpm.cmd`, and offers a one-click fix (`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, no admin needed), also from **Check & Update My Tools**. The error now comes with that advice too.
+- **Git:** the repository is created in its own step, so it still exists when the first commit fails (e.g. Git does not know your name yet).
+
+### Code
+- Wizard rules moved to `wizardModel.ts`, shared by both wizard modes.
+- Every file starts with a header explaining what it does, every function is documented, and all comments are in English, tagged for the Better Comments extension (`!` warnings, `?` explanations, `*` highlights).
+
 ## [1.0.2] - 2026-10-07
 
 Version 1.0.1 was prepared but never published, so everything below ships in 1.0.2.

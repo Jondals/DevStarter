@@ -1,15 +1,15 @@
-# Publica DevStarter en el Marketplace de Microsoft y en Open VSX.
+# Publishes DevStarter to the Microsoft Marketplace and to Open VSX.
 #
-# Se lanza de dos formas:
-#   - A mano: GitHub > Actions > Publish > "Run workflow" (con la opcion de solo ensayar).
-#   - Al subir una etiqueta de version:  git tag v1.0.2 && git push origin v1.0.2
-#     (la etiqueta tiene que coincidir con la version del package.json).
+# It can be started in two ways:
+#   - By hand: GitHub > Actions > Publish > "Run workflow" (with a dry-run option).
+#   - By pushing a version tag:  git tag v1.0.2 && git push origin v1.0.2
+#     (! the tag must match the version in package.json).
 #
-# Hacen falta dos secretos del repositorio (Settings > Secrets and variables > Actions):
-#   VSCE_PAT  token de Azure DevOps con permiso "Marketplace > Manage"
-#   OVSX_PAT  token de https://open-vsx.org
+# ! It needs two repository secrets (Settings > Secrets and variables > Actions):
+#   VSCE_PAT  Azure DevOps token with the "Marketplace > Manage" scope
+#   OVSX_PAT  token from https://open-vsx.org
 #
-# Si prefieres publicar desde tu ordenador, usa las tareas "DevStarter: Publish ..." de VS Code.
+# To publish from your own computer instead, use the "DevStarter: Publish ..." VS Code tasks.
 name: Publish
 
 on:
@@ -43,7 +43,7 @@ jobs:
             exit 1
           fi
 
-      # Los tests abren VS Code: necesitan una pantalla virtual (xvfb).
+      # ! The tests open VS Code: they need a virtual display (xvfb).
       - name: Tests (version reciente y version minima de VS Code)
         run: |
           xvfb-run -a pnpm test

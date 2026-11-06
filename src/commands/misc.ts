@@ -1,7 +1,7 @@
 /**
  * commands/misc.ts
  * ─────────────────
- * Comandos pequeños: bienvenida, nivel de experiencia, guía del proyecto y ayuda.
+ * Small commands: welcome message, experience level, project guide and help.
  */
 import * as vscode from 'vscode';
 import * as fs from 'fs';
@@ -10,8 +10,8 @@ import { showLog } from '../log';
 import { WELCOMED_KEY, extensionId } from '../state';
 
 /**
- * Mensaje de bienvenida solo la primera vez que se instala.
- * @param context contexto de la extensión
+ * Welcome message, only the first time the extension is installed.
+ * @param context extension context
  */
 export async function greetOnce(context: vscode.ExtensionContext): Promise<void> {
     if (context.globalState.get(WELCOMED_KEY)) {
@@ -37,7 +37,7 @@ export async function greetOnce(context: vscode.ExtensionContext): Promise<void>
     }
 }
 
-/** Comando "Change Experience Level". */
+/** "Change Experience Level" command. */
 export async function changeExperience(): Promise<void> {
     const picked = await vscode.window.showQuickPick(
         [
@@ -53,7 +53,7 @@ export async function changeExperience(): Promise<void> {
     }
 }
 
-/** Comando "Open Getting Started Guide". */
+/** "Open Getting Started Guide" command. */
 export async function openGuide(): Promise<void> {
     const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const guide = folder ? path.join(folder, 'GETTING_STARTED.md') : undefined;
@@ -70,9 +70,9 @@ export async function openGuide(): Promise<void> {
     }
 }
 
-// ─── Ayuda ──────────────────────────────────────────────────────────
+// ─── Help ───────────────────────────────────────────────────────────
 
-/** Comando "Help": un menú con lo que suele hacer falta cuando algo no sale. */
+/** "Help" command: a menu with what is usually needed when something does not work. */
 export async function showHelp(): Promise<void> {
     const picked = await vscode.window.showQuickPick(
         [

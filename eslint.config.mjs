@@ -1,4 +1,4 @@
-// Configuración de ESLint (revisa el estilo y errores comunes del código TypeScript).
+// ESLint configuration: checks the style and common mistakes of the TypeScript code.
 import typescriptEslint from "typescript-eslint";
 
 export default [{
@@ -25,7 +25,7 @@ export default [{
         "no-throw-literal": "warn",
         semi: "warn",
 
-        // Estilo del proyecto: funciones normales en vez de funciones flecha (lambdas).
+        // * Project style: regular functions instead of arrow functions (lambdas).
         "no-restricted-syntax": ["error", {
             selector: "ArrowFunctionExpression",
             message: "Use a regular function instead of an arrow function (project style).",

@@ -1,8 +1,8 @@
 /**
  * templates/index.ts
  * ──────────────────
- * Junta todas las plantillas en un único catálogo y ofrece la validación
- * y sugerencia de nombres de proyecto.
+ * Gathers every template into a single catalog and provides project-name
+ * validation and suggestions.
  */
 import { backendTemplates } from './backend';
 import { frontendTemplates } from './frontend';
@@ -14,7 +14,7 @@ export * from './types';
 export * from './libraries';
 export * from './presets';
 
-/** Todas las plantillas, en el orden en que aparecen en el asistente. */
+/** Every template, in the order they appear in the wizard. */
 export const templates: Template[] = [
     ...frontendTemplates,
     ...fullstackTemplates,
@@ -23,17 +23,17 @@ export const templates: Template[] = [
     ...otherTemplates,
 ];
 
-/** ¿Es un backend que se puede añadir a un frontend? */
+/** Whether it is a backend that can be added to a frontend. */
 function isAttachableBackend(t: Template): boolean {
     return t.category === 'Backend' && !!t.port;
 }
 
-/** Backends que se pueden añadir a un frontend o a una app móvil. */
+/** Backends that can be added to a frontend or a mobile app. */
 export const attachableBackends = templates.filter(isAttachableBackend);
 
 /**
- * Busca una plantilla por id.
- * @param id identificador (puede ser undefined)
+ * Looks up a template by id.
+ * @param id identifier (may be undefined)
  */
 export function findTemplate(id: string | undefined): Template | undefined {
     for (const t of templates) {
@@ -44,7 +44,7 @@ export function findTemplate(id: string | undefined): Template | undefined {
     return undefined;
 }
 
-/** Palabras reservadas de Dart (no valen como nombre de proyecto Flutter). */
+/** Dart reserved words (not valid as a Flutter project name). */
 // prettier-ignore
 const dartKeywords = new Set([
     'abstract', 'as', 'assert', 'async', 'await', 'break', 'case', 'catch', 'class', 'const', 'continue',
@@ -53,10 +53,10 @@ const dartKeywords = new Set([
 ]);
 
 /**
- * Comprueba un nombre de proyecto.
- * @param name nombre escrito
- * @param nameStyle kebab (my-app) o snake (my_app)
- * @returns un mensaje de error, o undefined si está bien
+ * Checks a project name.
+ * @param name typed name
+ * @param nameStyle kebab (my-app) or snake (my_app)
+ * @returns an error message, or undefined if it is fine
  */
 export function validateProjectName(name: string, nameStyle: Template['nameStyle']): string | undefined {
     if (!name) {
@@ -82,15 +82,15 @@ export function validateProjectName(name: string, nameStyle: Template['nameStyle
 }
 
 /**
- * Convierte "Mi App Chula" en "mi-app-chula" (o "mi_app_chula").
- * @param input texto escrito
- * @param nameStyle kebab o snake
+ * Turns "My Cool App" into "my-cool-app" (or "my_cool_app").
+ * @param input typed text
+ * @param nameStyle kebab or snake
  */
 export function suggestName(input: string, nameStyle: Template['nameStyle']): string {
     const sep = nameStyle === 'snake' ? '_' : '-';
     return input
         .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '') // quita tildes
+        .replace(/[̀-ͯ]/g, '') // removes accents
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, sep)
         .replace(new RegExp(`^[${sep}0-9]+|${sep}+$`, 'g'), '');

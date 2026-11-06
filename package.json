@@ -130,6 +130,19 @@
           "default": "",
           "description": "How DevStarter talks to you. Leave empty to be asked the first time."
         },
+        "devstarter.wizardStyle": {
+          "type": "string",
+          "enum": [
+            "visual",
+            "quick"
+          ],
+          "enumDescriptions": [
+            "A full page with cards, toggles and a live summary",
+            "Keyboard-driven lists at the top of the window (Quick Pick)"
+          ],
+          "default": "visual",
+          "description": "How the New Project wizard looks."
+        },
         "devstarter.defaultPackageManager": {
           "type": "string",
           "enum": [
@@ -286,6 +299,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "1.90.0",
+    "@vscode/codicons": "0.0.36",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^4.0.0",

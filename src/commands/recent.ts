@@ -1,18 +1,18 @@
 /**
  * commands/recent.ts
  * ───────────────────
- * Proyectos recientes: guarda los proyectos creados y permite volver a abrirlos.
+ * Recent projects: remembers the created projects and lets you reopen them.
  */
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { RecentProject, RECENT_KEY } from '../state';
 
-// ─── Proyectos recientes ────────────────────────────────────────────
+// ─── Recent projects ────────────────────────────────────────────────
 
 /**
- * Guarda el proyecto en la lista de recientes (máximo 20).
- * @param context contexto de la extensión
- * @param project proyecto creado
+ * Adds the project to the recent list (20 at most).
+ * @param context extension context
+ * @param project created project
  */
 export async function rememberProject(context: vscode.ExtensionContext, project: RecentProject): Promise<void> {
     const list = context.globalState.get<RecentProject[]>(RECENT_KEY, []);
@@ -26,8 +26,8 @@ export async function rememberProject(context: vscode.ExtensionContext, project:
 }
 
 /**
- * Comando "Recent Projects": lista los proyectos creados y permite abrirlos.
- * @param context contexto de la extensión
+ * "Recent Projects" command: lists the created projects and lets you open them.
+ * @param context extension context
  */
 export async function recentProjects(context: vscode.ExtensionContext): Promise<void> {
     const items: Array<vscode.QuickPickItem & { project: RecentProject }> = [];

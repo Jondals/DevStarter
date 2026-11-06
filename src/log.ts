@@ -1,39 +1,39 @@
 /**
  * log.ts
  * ──────
- * Registro de DevStarter y manejo de errores inesperados.
+ * DevStarter's log and handling of unexpected errors.
  *
- * Todo lo que falla "por dentro" se escribe en el canal de salida "DevStarter"
- * (Ver → Salida → DevStarter). Así, si algo explota, hay un rastro que revisar o enviar,
- * y la persona ve un mensaje claro en lugar del diálogo genérico de VS Code
+ * Everything that fails "internally" is written to the "DevStarter" output channel
+ * (View → Output → DevStarter). That way, if something blows up, there is a trail to check or
+ * send, and the person sees a clear message instead of VS Code's generic dialog
  * ("Command resulted in an error").
  */
 import * as vscode from 'vscode';
 
 let channel: vscode.OutputChannel | undefined;
 
-/** El canal de salida de DevStarter (se crea la primera vez que hace falta). */
+/** DevStarter's output channel (created the first time it is needed). */
 function output(): vscode.OutputChannel {
     channel ??= vscode.window.createOutputChannel('DevStarter');
     return channel;
 }
 
 /**
- * Escribe una línea en el registro, con la hora.
- * @param message texto a guardar
+ * Writes a timestamped line to the log.
+ * @param message text to store
  */
 export function log(message: string): void {
     output().appendLine(`[${new Date().toISOString().slice(11, 19)}] ${message}`);
 }
 
-/** Muestra el canal de salida (para el botón "Show log"). */
+/** Shows the output channel (for the "Show log" button). */
 export function showLog(): void {
     output().show(true);
 }
 
 /**
- * Convierte cualquier error en texto legible (con la pila, si la hay, para el registro).
- * @param err lo que se haya lanzado
+ * Turns any error into readable text (with the stack, if any, for the log).
+ * @param err whatever was thrown
  */
 export function describeError(err: unknown): { message: string; detail: string } {
     if (err instanceof Error) {
@@ -43,9 +43,9 @@ export function describeError(err: unknown): { message: string; detail: string }
 }
 
 /**
- * Registra un error y avisa a la persona con un mensaje claro y un botón para ver el detalle.
- * @param what qué se estaba haciendo ("creating the project", "updating libraries"…)
- * @param err el error
+ * Logs an error and tells the person with a clear message and a button to see the details.
+ * @param what what was being done ("creating the project", "updating libraries"…)
+ * @param err the error
  */
 export async function reportError(what: string, err: unknown): Promise<void> {
     const { message, detail } = describeError(err);
@@ -64,10 +64,10 @@ export async function reportError(what: string, err: unknown): Promise<void> {
 }
 
 /**
- * Envuelve un comando para que nunca termine en el diálogo genérico de VS Code:
- * si falla, se registra y se muestra un mensaje claro.
- * @param what qué hace el comando, para el mensaje de error
- * @param fn el comando
+ * Wraps a command so it never ends in VS Code's generic error dialog:
+ * if it fails, it is logged and a clear message is shown.
+ * @param what what the command does, for the error message
+ * @param fn the command
  */
 export function safeCommand<A extends unknown[]>(
     what: string,
@@ -83,10 +83,10 @@ export function safeCommand<A extends unknown[]>(
 }
 
 /**
- * Lanza una tarea en segundo plano sin que un fallo se pierda en silencio:
- * se registra en el canal de DevStarter (sin molestar a la persona).
- * @param what descripción de la tarea
- * @param task la promesa en marcha
+ * Runs a background task without letting a failure vanish silently:
+ * it is logged in DevStarter's channel (without bothering the person).
+ * @param what description of the task
+ * @param task the running promise
  */
 export function background(what: string, task: Promise<unknown>): void {
     task.catch(function (err) {

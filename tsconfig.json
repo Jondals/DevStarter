@@ -7,7 +7,7 @@
 		],
 		"sourceMap": true,
 		"rootDir": "src",
-		"types": ["node", "mocha"], /* tipos globales: Node.js (fs, path, process…) y Mocha (suite, test) */
+		"types": ["node", "mocha"], /* global types: Node.js (fs, path, process…) and Mocha (suite, test) */
 		"strict": true,   /* enable all strict type-checking options */
 		/* Additional Checks */
 		"noImplicitReturns": true, /* Report error when not all code paths in function return a value. */

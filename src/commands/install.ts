@@ -1,9 +1,9 @@
 /**
  * commands/install.ts
  * ────────────────────
- * Herramientas que hacen falta para un proyecto: comprobarlas, ofrecer instalarlas (con permiso
- * y diciendo de dónde viene lo que se ejecuta) y arreglar el caso "este framework pide un
- * Node.js más nuevo" (actualizar Node.js o usar una versión compatible).
+ * Tools a project needs: check them, offer to install them (asking first and saying where
+ * what runs comes from) and fix the "this framework needs a newer Node.js" case (update
+ * Node.js or use a compatible version).
  */
 import * as vscode from 'vscode';
 import * as os from 'os';
@@ -27,18 +27,18 @@ import { isNewer, isNodeEngineError, latestCompatibleVersion, requiredNodeFromOu
 import { palette, style, symbols } from '../ui';
 import { syncTerminalPath } from '../state';
 
-/** Herramienta que falta (o es demasiado antigua) y cómo instalarla, si se puede. */
+/** A tool that is missing (or too old) and how to install it, if possible. */
 export interface Missing {
     name: string;
     installUrl: string;
     installer?: Installer;
-    /** Vuelve a comprobar la herramienta tras instalarla. */
+    /** Checks the tool again after installing it. */
     verify: () => Promise<boolean>;
 }
 
 /**
- * Crea una función que vuelve a detectar una herramienta (sin caché).
- * @param id herramienta
+ * Creates a function that detects a tool again (without cache).
+ * @param id tool
  */
 export function recheckTool(id: ToolId): () => Promise<boolean> {
     return async function (): Promise<boolean> {
@@ -48,8 +48,8 @@ export function recheckTool(id: ToolId): () => Promise<boolean> {
 }
 
 /**
- * Crea una función que vuelve a detectar un gestor de paquetes (sin caché).
- * @param id npm, pnpm o bun
+ * Creates a function that detects a package manager again (without cache).
+ * @param id npm, pnpm or bun
  */
 export function recheckPackageManager(id: string): () => Promise<boolean> {
     return async function (): Promise<boolean> {
@@ -64,8 +64,8 @@ export function recheckPackageManager(id: string): () => Promise<boolean> {
 }
 
 /**
- * Comprueba las herramientas que necesita el proyecto y las escribe en el terminal.
- * @returns lo que falta y el comando de Python detectado
+ * Checks the tools the project needs and writes them to the terminal.
+ * @returns what is missing and the detected Python command
  */
 export async function checkProjectTools(
     term: DevStarterTerminal,
@@ -126,15 +126,15 @@ export async function checkProjectTools(
     return { missing, python };
 }
 
-/** Detecta una herramienta (función con nombre para usar con `map`). */
+/** Detects a tool (a named function to use with `map`). */
 function detectToolById(id: ToolId): ReturnType<typeof detectTool> {
     return detectTool(id);
 }
 
 /**
- * Si faltan herramientas: las que se pueden instalar solas se ofrecen en un diálogo;
- * si alguna no se puede, se explica cómo hacerlo.
- * @returns los pasos de instalación, o undefined si no se puede continuar
+ * If tools are missing: those that can be installed automatically are offered in a dialog;
+ * if any cannot, it explains how to do it.
+ * @returns the installation steps, or undefined if we cannot continue
  */
 export async function planInstalls(term: DevStarterTerminal, missing: Missing[]): Promise<Step[] | undefined> {
     if (!missing.length) {
@@ -191,15 +191,15 @@ export async function planInstalls(term: DevStarterTerminal, missing: Missing[])
     return installSteps(missing);
 }
 
-/** ¿Hay que instalar esta herramienta a mano? */
+/** Whether this tool must be installed by hand. */
 function hasNoInstaller(m: Missing): boolean {
     return !m.installer;
 }
 
 /**
- * Pasos que instalan las herramientas y comprueban que han quedado disponibles.
- * PHP y Composer vienen del mismo instalador: no se ejecuta dos veces.
- * @param missing herramientas a instalar (todas con instalador)
+ * Steps that install the tools and check that they are available afterwards.
+ * ? PHP and Composer come from the same installer: it does not run twice.
+ * @param missing tools to install (all with an installer)
  */
 export function installSteps(missing: Missing[]): Step[] {
     const steps: Step[] = [];
@@ -219,8 +219,8 @@ export function installSteps(missing: Missing[]): Step[] {
 }
 
 /**
- * Paso que actualiza el PATH y comprueba que la herramienta ya funciona.
- * @param m herramienta instalada
+ * Step that refreshes the PATH and checks that the tool works now.
+ * @param m installed tool
  */
 function verifyStep(m: Missing): Step {
     return {
@@ -239,15 +239,15 @@ function verifyStep(m: Missing): Step {
     };
 }
 
-// ─── Arreglar fallos ────────────────────────────────────────────────
+// ─── Fixing failures ────────────────────────────────────────────────
 
 /**
- * Si un paso falla porque el framework pide un Node.js más nuevo, pregunta qué hacer:
- * actualizar Node.js, o usar la versión más nueva del framework que funciona con el Node actual.
- * Después el terminal reintenta el paso.
- * @param step paso que ha fallado
- * @param output salida del paso
- * @returns el plan de arreglo, o undefined si no sabemos arreglarlo
+ * If a step fails because the framework needs a newer Node.js, asks what to do:
+ * update Node.js, or use the newest framework version that works with the current Node.
+ * The terminal then retries the step.
+ * @param step failed step
+ * @param output output of the step
+ * @returns the fix plan, or undefined if we do not know how to fix it
  */
 export async function recoverFromFailure(step: Step, output: string): Promise<Recovery | undefined> {
     if (!isNodeEngineError(output)) {
@@ -305,8 +305,8 @@ export async function recoverFromFailure(step: Step, output: string): Promise<Re
 }
 
 /**
- * Paso que comprueba que Node.js se ha actualizado de verdad.
- * @param before versión que había antes
+ * Step that checks that Node.js really got updated.
+ * @param before version installed before
  */
 function nodeUpdatedStep(before: string | undefined): Step {
     return {

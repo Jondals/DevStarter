@@ -1,15 +1,15 @@
 /**
  * scaffold/docker.ts
  * ──────────────────
- * Ficheros de Docker:
- *  - docker-compose.yml para levantar la base de datos con un solo comando.
- *  - Dockerfiles para empaquetar el backend y desplegarlo en cualquier sitio.
+ * Docker files:
+ *  - docker-compose.yml to start the database with a single command.
+ *  - Dockerfiles to package the backend and deploy it anywhere.
  */
 import * as path from 'path';
 import { credentials, Database } from './database';
 import { snakeCase, write } from './files';
 
-/** Bloque de servicio de docker-compose para cada base de datos con servidor. */
+/** docker-compose service block for each database that needs a server. */
 function composeService(db: Database, name: string): string | undefined {
     const n = snakeCase(name);
     switch (db) {
@@ -47,10 +47,10 @@ function composeService(db: Database, name: string): string | undefined {
 }
 
 /**
- * Escribe docker-compose.yml con el servidor de base de datos. SQLite no lo necesita.
- * @param dir carpeta raíz del proyecto
- * @param db base de datos
- * @param name nombre del proyecto
+ * Writes docker-compose.yml with the database server. SQLite does not need it.
+ * @param dir project root folder
+ * @param db database
+ * @param name project name
  */
 export function writeDatabaseCompose(dir: string, db: Database, name: string): void {
     const service = composeService(db, name);
@@ -74,7 +74,7 @@ volumes:
     );
 }
 
-/** Lo que Docker no debe copiar dentro de la imagen. */
+/** What Docker must not copy into the image. */
 const dockerignore = `
 node_modules
 .venv
@@ -89,8 +89,8 @@ obj
 `;
 
 /**
- * Dockerfile para una app Node (Express o NestJS).
- * @param opts `build`: compilar antes de arrancar; `start`: comando de arranque
+ * Dockerfile for a Node app (Express or NestJS).
+ * @param opts `build`: compile before starting; `start`: start command
  */
 export function nodeDockerfile(opts: { build?: boolean; start: string }): string {
     return `
@@ -109,8 +109,8 @@ CMD ${JSON.stringify(opts.start.split(' '))}
 }
 
 /**
- * Dockerfile para una app Python (FastAPI, Flask o Django).
- * @param opts puerto y comando de arranque
+ * Dockerfile for a Python app (FastAPI, Flask or Django).
+ * @param opts port and start command
  */
 export function pythonDockerfile(opts: { port: number; cmd: string[] }): string {
     return `
@@ -128,7 +128,7 @@ CMD ${JSON.stringify(opts.cmd)}
 `;
 }
 
-/** Dockerfile en dos fases para Go: compila y copia solo el binario. */
+/** Two-stage Dockerfile for Go: compiles and copies only the binary. */
 export function goDockerfile(): string {
     return `
 FROM golang:1.24-alpine AS build
@@ -145,8 +145,8 @@ CMD ["/server"]
 }
 
 /**
- * Dockerfile en dos fases para Rust.
- * @param name nombre del binario (el del Cargo.toml)
+ * Two-stage Dockerfile for Rust.
+ * @param name binary name (the one in Cargo.toml)
  */
 export function rustDockerfile(name: string): string {
     return `
@@ -164,9 +164,9 @@ CMD ["/server"]
 }
 
 /**
- * Escribe el Dockerfile y su .dockerignore.
- * @param dir carpeta del backend
- * @param content contenido del Dockerfile
+ * Writes the Dockerfile and its .dockerignore.
+ * @param dir backend folder
+ * @param content contents of the Dockerfile
  */
 export function writeDockerfile(dir: string, content: string): void {
     write(path.join(dir, 'Dockerfile'), content);

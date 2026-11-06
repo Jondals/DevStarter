@@ -1,8 +1,8 @@
 /**
  * state.ts
  * ────────
- * Lo que comparten los comandos de la extensión: las claves donde se guardan datos, los tipos
- * de esos datos y el contexto de VS Code (que solo se recibe una vez, en activate()).
+ * What the extension's commands share: the keys where data is stored, the types of that
+ * data and the VS Code context (which is only received once, in activate()).
  */
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -12,7 +12,7 @@ export const PENDING_LAUNCH_KEY = 'devstarter.pendingLaunch';
 export const WELCOMED_KEY = 'devstarter.welcomed';
 export const RECENT_KEY = 'devstarter.recentProjects';
 
-/** Un servidor de desarrollo del proyecto (frontend, backend…). */
+/** A dev server of the project (frontend, backend…). */
 export interface LaunchServer {
     label: string;
     cwd: string;
@@ -20,18 +20,18 @@ export interface LaunchServer {
     url?: string;
 }
 
-/** Se guarda antes de abrir el proyecto para que la nueva ventana termine el trabajo. */
+/** Stored before opening the project so the new window can finish the job. */
 export interface PendingLaunch {
     root: string;
     servers: LaunchServer[];
     mainFile?: string;
     openGuide: boolean;
     createdAt: number;
-    /** Los servidores ya se arrancaron desde la ventana donde se creó el proyecto. */
+    /** The servers were already started from the window where the project was created. */
     serversStarted?: boolean;
 }
 
-/** Un proyecto creado con DevStarter (para "Recent Projects"). */
+/** A project created with DevStarter (for "Recent Projects"). */
 export interface RecentProject {
     name: string;
     root: string;
@@ -39,28 +39,28 @@ export interface RecentProject {
     createdAt: number;
 }
 
-/** Contexto de la extensión, para poder tocar el entorno de las terminales desde cualquier función. */
+/** Extension context, so the terminals' environment can be changed from any function. */
 let extensionContext: vscode.ExtensionContext | undefined;
 
 /**
- * Guarda el contexto de la extensión (se llama una vez, desde activate()).
- * @param context contexto de VS Code
+ * Stores the extension context (called once, from activate()).
+ * @param context VS Code context
  */
 export function setExtensionContext(context: vscode.ExtensionContext): void {
     extensionContext = context;
 }
 
-/** Identificador real de la extensión ("publicador.devstarter"), para abrir su tour o sus ajustes. */
+/** Real id of the extension ("publisher.devstarter"), to open its tour or its settings. */
 export function extensionId(): string {
     return extensionContext?.extension.id ?? 'devstarter';
 }
 
 /**
- * Hace que las terminales NUEVAS de VS Code vean las herramientas instaladas con VS Code abierto
- * (PHP, Node.js, pnpm…). VS Code solo lee el PATH del sistema al arrancar, así que sin esto
- * "php artisan serve" daría "php no se reconoce" hasta reiniciar VS Code.
- * Las terminales que ya estaban abiertas no se pueden cambiar: hay que abrir una nueva.
- * @returns lo que se añade al PATH de las terminales nuevas
+ * Makes NEW VS Code terminals see the tools installed while VS Code was open
+ * (PHP, Node.js, pnpm…). VS Code only reads the system PATH on startup, so without this
+ * "php artisan serve" would say "php is not recognized" until VS Code is restarted.
+ * ! Terminals that were already open cannot be changed: a new one must be opened.
+ * @returns what gets added to the PATH of new terminals
  */
 export function syncTerminalPath(): string | undefined {
     const collection = extensionContext?.environmentVariableCollection;

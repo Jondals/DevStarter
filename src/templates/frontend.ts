@@ -1,8 +1,8 @@
 /**
  * templates/frontend.ts
  * ─────────────────────
- * Plantillas de frontend: React, Vue, Svelte, HTML/CSS/JS (todas con Vite) y Angular.
- * Todas pueden recibir un backend: en ese caso se configura el proxy de /api.
+ * Frontend templates: React, Vue, Svelte, HTML/CSS/JS (all with Vite) and Angular.
+ * All of them can get a backend: in that case the /api proxy is configured.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -17,11 +17,11 @@ import { WelcomeFramework, writeWelcomePage } from '../scaffold/welcome';
 import { cmd, PartOptions, Plan, scaffold, task, Template } from './types';
 
 /**
- * Pasos de Tailwind CSS: instalar los paquetes y configurar el proyecto.
- * @param o opciones del proyecto
- * @param packages paquetes que se instalan como dependencias de desarrollo
- * @param configure escribe la configuración (depende del framework)
- * @param detail lo que se cuenta debajo del paso
+ * Tailwind CSS steps: install the packages and configure the project.
+ * @param o project options
+ * @param packages packages installed as development dependencies
+ * @param configure writes the configuration (depends on the framework)
+ * @param detail what is reported under the step
  */
 function tailwindSteps(o: PartOptions, packages: string[], configure: () => void, detail: string): Step[] {
     return [
@@ -34,9 +34,9 @@ function tailwindSteps(o: PartOptions, packages: string[], configure: () => void
 }
 
 /**
- * Paso que hace que las peticiones a /api del frontend lleguen al backend.
- * @param o opciones del proyecto (con backendUrl)
- * @param configure escribe la configuración del proxy (depende del framework)
+ * Step that sends the frontend's /api requests to the backend.
+ * @param o project options (with backendUrl)
+ * @param configure writes the proxy configuration (depends on the framework)
  */
 function backendLinkStep(o: PartOptions, configure: (dir: string, backendUrl: string) => void): Step {
     return task('Connecting the frontend to the backend', function (log) {
@@ -45,17 +45,17 @@ function backendLinkStep(o: PartOptions, configure: (dir: string, backendUrl: st
     });
 }
 
-/** Datos que cambian entre las plantillas basadas en Vite. */
+/** What changes between the Vite-based templates. */
 interface ViteTemplateInfo {
     id: string;
     label: string;
     icon: string;
     detail: string;
     recommended?: boolean;
-    /** Nombre de la plantilla en create-vite (sin el sufijo -ts). */
+    /** Template name in create-vite (without the -ts suffix). */
     vite: string;
     welcome: WelcomeFramework;
-    /** Hoja de estilos principal. */
+    /** Main stylesheet. */
     css: string;
     mainFiles: (ts: boolean) => string[];
     docs: string;
@@ -63,13 +63,13 @@ interface ViteTemplateInfo {
 }
 
 /**
- * Pasos de una plantilla Vite: crear, instalar, Tailwind, proxy y página de bienvenida.
- * @param t datos de la plantilla
- * @param o opciones del proyecto
+ * Steps of a Vite template: create, install, Tailwind, proxy and welcome page.
+ * @param t template data
+ * @param o project options
  */
 function vitePlan(t: ViteTemplateInfo, o: PartOptions): Plan {
     const steps: Step[] = [
-        // create-vite sin terminal interactivo usa los valores que le pasamos y no pregunta nada.
+        // ? Without an interactive terminal, create-vite uses the values we pass and asks nothing.
         scaffold(
             o,
             `Creating ${t.label} project with Vite`,
@@ -85,7 +85,7 @@ function vitePlan(t: ViteTemplateInfo, o: PartOptions): Plan {
             o.parentDir,
         ),
         cmd('Installing dependencies', o.pm.install(), o.dir),
-        // La pestaña del navegador muestra el nombre del proyecto (no "frontend").
+        // * The browser tab shows the project name (not "frontend").
         task(
             'Setting the page title',
             function () {
@@ -113,7 +113,7 @@ function vitePlan(t: ViteTemplateInfo, o: PartOptions): Plan {
     if (o.backendUrl) {
         steps.push(backendLinkStep(o, configureViteProxy));
     }
-    // La página de bienvenida usa Tailwind, así que solo tiene sentido con Tailwind.
+    // ? The welcome page uses Tailwind, so it only makes sense with Tailwind.
     if (o.tailwind && o.beginner) {
         steps.push(
             task('Adding a welcome page', function () {
@@ -140,8 +140,8 @@ function vitePlan(t: ViteTemplateInfo, o: PartOptions): Plan {
 }
 
 /**
- * Fábrica para las plantillas basadas en Vite, que comparten casi todo.
- * @param t datos de la plantilla
+ * Factory for the Vite-based templates, which share almost everything.
+ * @param t template data
  */
 function viteTemplate(t: ViteTemplateInfo): Template {
     return {
@@ -167,7 +167,7 @@ function viteTemplate(t: ViteTemplateInfo): Template {
     };
 }
 
-/** Pasos de Angular: crear con el CLI, Tailwind por PostCSS y proxy. */
+/** Angular steps: create with the CLI, Tailwind through PostCSS, and proxy. */
 function angularPlan(o: PartOptions): Plan {
     const steps: Step[] = [
         scaffold(
@@ -213,16 +213,30 @@ function angularPlan(o: PartOptions): Plan {
     };
 }
 
-/** Funciones auxiliares para los ficheros principales de cada plantilla. */
+// ─── Main file of each template ─────────────────────────────────────
+
+/**
+ * Main file of a React project.
+ * @param ts the project uses TypeScript
+ */
 function reactMain(ts: boolean): string[] {
     return [`src/App.${ts ? 'tsx' : 'jsx'}`];
 }
+
+/** Main file of a Vue project. */
 function vueMain(): string[] {
     return ['src/App.vue'];
 }
+
+/** Main file of a Svelte project. */
 function svelteMain(): string[] {
     return ['src/App.svelte'];
 }
+
+/**
+ * Main files of a plain HTML/CSS/JS project (script first, then the page).
+ * @param ts the project uses TypeScript
+ */
 function vanillaMain(ts: boolean): string[] {
     return [`src/main.${ts ? 'ts' : 'js'}`, 'index.html'];
 }

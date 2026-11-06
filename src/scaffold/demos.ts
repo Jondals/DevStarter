@@ -1,31 +1,31 @@
 /**
  * scaffold/demos.ts
  * ─────────────────
- * Páginas de demostración para las librerías visuales (Three.js, GSAP, p5.js, Phaser,
- * Leaflet, React Three Fiber). Así quien no sabe programar ve algo funcionando nada más
- * crear el proyecto y tiene un ejemplo que copiar.
+ * Demo pages for the visual libraries (Three.js, GSAP, p5.js, Phaser,
+ * Leaflet, React Three Fiber), so people who cannot code yet see something working right
+ * after creating the project, and get an example to copy.
  *
- * Solo se crean en proyectos Vite: Vite sirve cualquier .html del proyecto, así que
- * cada demo se abre en http://localhost:5173/demos/<nombre>.html sin tocar nada más.
- * El código de las plantillas (`...`) es el que se escribe en el proyecto del usuario.
+ * They are only created in Vite projects: Vite serves any .html of the project, so
+ * each demo opens at http://localhost:5173/demos/<name>.html with nothing else to change.
+ * ? The code inside the templates (`...`) is what gets written into the user's project.
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import { write } from './files';
 
 /**
- * ¿Es un proyecto Vite? (tiene index.html en la raíz, a diferencia de Angular, Next o Astro).
- * @param dir carpeta del proyecto
+ * Whether it is a Vite project (it has index.html at the root, unlike Angular, Next or Astro).
+ * @param dir project folder
  */
 export function isViteProject(dir: string): boolean {
     return fs.existsSync(path.join(dir, 'index.html')) && fs.existsSync(path.join(dir, 'package.json'));
 }
 
 /**
- * HTML de una página de demo.
- * @param title título de la pestaña
- * @param script fichero JS de la demo (relativo a demos/)
- * @param head etiquetas extra para <head>
+ * HTML of a demo page.
+ * @param title tab title
+ * @param script JS file of the demo (relative to demos/)
+ * @param head extra tags for <head>
  */
 function demoPage(title: string, script: string, head = ''): string {
     return `<!doctype html>
@@ -47,7 +47,7 @@ ${head}  </head>
 `;
 }
 
-/** Escribe demos/three.html: un nudo 3D que gira, con luces. */
+/** Writes demos/three.html: a spinning 3D knot with lights. */
 export function writeThreeDemo(dir: string): void {
     write(path.join(dir, 'demos', 'three.html'), demoPage('Three.js', 'three.js'));
     write(
@@ -103,7 +103,7 @@ addEventListener('resize', () => {
     );
 }
 
-/** Escribe demos/gsap.html: cajas que entran en escena con una línea de tiempo. */
+/** Writes demos/gsap.html: boxes that enter the scene with a timeline. */
 export function writeGsapDemo(dir: string): void {
     write(
         path.join(dir, 'demos', 'gsap.html'),
@@ -139,7 +139,7 @@ timeline
     );
 }
 
-/** Escribe demos/p5.html: círculos de colores que siguen al ratón. */
+/** Writes demos/p5.html: colored circles that follow the mouse. */
 export function writeP5Demo(dir: string): void {
     write(path.join(dir, 'demos', 'p5.html'), demoPage('p5.js', 'p5.js'));
     write(
@@ -186,7 +186,7 @@ new p5((p) => {
     );
 }
 
-/** Escribe demos/phaser.html: un minijuego con bolas que rebotan (haz clic para crear más). */
+/** Writes demos/phaser.html: a mini game with bouncing balls (click to create more). */
 export function writePhaserDemo(dir: string): void {
     write(path.join(dir, 'demos', 'phaser.html'), demoPage('Phaser', 'phaser.js'));
     write(
@@ -229,7 +229,7 @@ new Phaser.Game({
     );
 }
 
-/** Escribe demos/leaflet.html: un mapa interactivo con un marcador. */
+/** Writes demos/leaflet.html: an interactive map with a marker. */
 export function writeLeafletDemo(dir: string): void {
     write(
         path.join(dir, 'demos', 'leaflet.html'),
@@ -262,7 +262,7 @@ map.on('click', (event) => {
     );
 }
 
-/** Escribe demos/fiber.html: una escena de React Three Fiber (solo proyectos React). */
+/** Writes demos/fiber.html: a React Three Fiber scene (React projects only). */
 export function writeFiberDemo(dir: string): void {
     write(path.join(dir, 'demos', 'fiber.html'), demoPage('React Three Fiber', 'fiber.jsx'));
     write(
@@ -306,7 +306,7 @@ createRoot(container).render(
     );
 }
 
-/** Nombres bonitos de cada demo para el índice. */
+/** Friendly name of each demo, for the index. */
 const demoTitles: Record<string, string> = {
     three: 'Three.js · 3D shape you can tilt with the mouse',
     fiber: 'React Three Fiber · 3D boxes as React components',
@@ -317,8 +317,8 @@ const demoTitles: Record<string, string> = {
 };
 
 /**
- * Escribe demos/index.html con un enlace a cada demo que exista.
- * @param dir carpeta del proyecto
+ * Writes demos/index.html with a link to every demo that exists.
+ * @param dir project folder
  */
 export function writeDemoIndex(dir: string): void {
     const folder = path.join(dir, 'demos');

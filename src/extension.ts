@@ -1,16 +1,16 @@
 /**
  * extension.ts
  * ────────────
- * Punto de entrada de la extensión. VS Code llama a activate() al arrancar y aquí solo se
- * registran los comandos; cada uno vive en su propio módulo dentro de commands/:
+ * Entry point of the extension. VS Code calls activate() on startup, and this file only
+ * registers the commands; each one lives in its own module inside commands/:
  *
- *   newProject    · asistente → terminal → herramientas → pasos → abrir el proyecto
- *   install       · herramientas que hacen falta (instalar, arreglar "Node.js demasiado antiguo")
- *   launch        · abrir el proyecto, levantar los servidores y abrir la web
+ *   newProject    · wizard → terminal → tools → steps → open the project
+ *   install       · tools a project needs (install them, fix "Node.js is too old")
+ *   launch        · open the project, start the dev servers and open the app
  *   tools         · Check & Update My Tools
  *   updateProject · Update Project Libraries
- *   recent        · proyectos recientes
- *   misc          · bienvenida, nivel de experiencia, guía y ayuda
+ *   recent        · recent projects
+ *   misc          · welcome message, experience level, guide and help
  */
 import * as vscode from 'vscode';
 import { background, log, safeCommand } from './log';
@@ -23,28 +23,28 @@ import { recentProjects, rememberProject } from './commands/recent';
 import { checkTools } from './commands/tools';
 import { updateProject } from './commands/updateProject';
 
-/** Lo que la extensión ofrece a otras extensiones (y a los tests). */
+/** What the extension offers to other extensions (and to the tests). */
 export interface DevStarterApi {
-    /** Añade un proyecto a "Recent Projects". */
+    /** Adds a project to "Recent Projects". */
     rememberProject(project: RecentProject): Promise<void>;
-    /** Pasa a las terminales nuevas las carpetas añadidas al PATH; devuelve lo que se les añade. */
+    /** Passes folders added to PATH on to new terminals; returns what gets added. */
     syncTerminalPath(): string | undefined;
-    /** Abre un terminal por servidor de desarrollo (frontend, backend…) y lanza su comando. */
+    /** Opens one terminal per dev server (frontend, backend…) and runs its command. */
     startDevServers(launch: PendingLaunch): Promise<void>;
 }
 
 /**
- * VS Code llama a esta función al arrancar la extensión.
- * @param context permite guardar datos y registrar lo que hay que limpiar al cerrar
+ * VS Code calls this function when the extension starts.
+ * @param context lets us store data and register what to clean up on shutdown
  */
 export function activate(context: vscode.ExtensionContext): DevStarterApi {
     setExtensionContext(context);
-    // Si se instaló algo con VS Code abierto, lo hacemos visible sin reiniciar
-    // (en la extensión y en las terminales nuevas).
+    // * If something was installed while VS Code was open, make it visible without restarting
+    // * (for the extension and for new terminals).
     background('refreshing the PATH', refreshPath().then(syncTerminalPath));
     log(`DevStarter ${context.extension.packageJSON.version} activated`);
 
-    // Cada comando va envuelto: si algo falla, la persona ve un mensaje claro (no el diálogo genérico).
+    // * Every command is wrapped: if something fails, the person sees a clear message (not the generic dialog).
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'devstarter.newProject',
@@ -83,12 +83,12 @@ export function activate(context: vscode.ExtensionContext): DevStarterApi {
     };
 }
 
-/** VS Code llama a esta función al cerrar la extensión. No hay nada que limpiar. */
+/** VS Code calls this function when the extension shuts down. There is nothing to clean up. */
 export function deactivate(): void {}
 
 /**
- * Botón "New Project" en la barra de estado (se puede ocultar en los ajustes).
- * @param context contexto de la extensión
+ * "New Project" button in the status bar (can be hidden in the settings).
+ * @param context extension context
  */
 function createStatusBarButton(context: vscode.ExtensionContext): void {
     const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -96,7 +96,7 @@ function createStatusBarButton(context: vscode.ExtensionContext): void {
     item.tooltip = 'DevStarter: create a new project in a few clicks';
     item.command = 'devstarter.newProject';
 
-    /** Muestra u oculta el botón según el ajuste. */
+    /** Shows or hides the button according to the setting. */
     function update(): void {
         if (vscode.workspace.getConfiguration('devstarter').get('showStatusBarButton', true)) {
             item.show();

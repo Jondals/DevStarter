@@ -1,14 +1,14 @@
 /**
  * templates/other.ts
  * ──────────────────
- * Plantillas móviles (Expo y Flutter) y "otros": scripts de Node.js y Python,
- * y un proyecto vacío para quien quiera montar su propio stack.
+ * Mobile templates (Expo and Flutter) and "other": Node.js and Python scripts,
+ * plus an empty project for people who want to build their own stack.
  */
 import * as path from 'path';
 import { snakeCase, write } from '../scaffold/files';
 import { cmd, makeDir, PartOptions, Plan, scaffold, task, Template, venvPython } from './types';
 
-/** Pasos de Expo (React Native). */
+/** Expo (React Native) steps. */
 function expoPlan(o: PartOptions): Plan {
     const notes = [
         'Install **Expo Go** on your phone and scan the QR code shown in the terminal.',
@@ -35,11 +35,11 @@ function expoPlan(o: PartOptions): Plan {
     };
 }
 
-/** Pasos de Flutter. */
+/** Flutter steps. */
 function flutterPlan(o: PartOptions): Plan {
     return {
         steps: [
-            // --project-name porque la carpeta puede llamarse "mobile" en un proyecto full-stack.
+            // ? --project-name because the folder may be called "mobile" in a full-stack project.
             cmd(
                 'Creating Flutter project',
                 `flutter create --org com.example --project-name ${snakeCase(o.name)} ${o.folder}`,
@@ -53,8 +53,8 @@ function flutterPlan(o: PartOptions): Plan {
 }
 
 /**
- * Escribe un programa de Node.js (package.json, tsconfig si es TypeScript y src/index).
- * @param o opciones del proyecto
+ * Writes a Node.js program (package.json, tsconfig for TypeScript and src/index).
+ * @param o project options
  */
 function writeNodeScript(o: PartOptions): void {
     const ext = o.typescript ? 'ts' : 'js';
@@ -63,7 +63,7 @@ function writeNodeScript(o: PartOptions): void {
         version: '1.0.0',
         private: true,
         type: 'module',
-        // tsx ejecuta TypeScript directamente, sin compilar a mano.
+        // ? tsx runs TypeScript directly, without compiling by hand.
         scripts: o.typescript
             ? { dev: 'tsx watch src/index.ts', start: 'tsx src/index.ts', build: 'tsc' }
             : { dev: 'node --watch src/index.js', start: 'node src/index.js' },
@@ -96,7 +96,7 @@ console.log(\`Today is \${new Date().toLocaleDateString()}\`)
     );
 }
 
-/** Pasos del script de Node.js. */
+/** Node.js script steps. */
 function nodeScriptPlan(o: PartOptions): Plan {
     const ext = o.typescript ? 'ts' : 'js';
     const steps = [
@@ -116,8 +116,8 @@ function nodeScriptPlan(o: PartOptions): Plan {
 }
 
 /**
- * Escribe un programa de Python (main.py, requirements.txt y .gitignore).
- * @param o opciones del proyecto
+ * Writes a Python program (main.py, requirements.txt and .gitignore).
+ * @param o project options
  */
 function writePythonScript(o: PartOptions): void {
     write(path.join(o.dir, '.gitignore'), '.venv/\n__pycache__/\n.env\n');
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     );
 }
 
-/** Pasos del script de Python. */
+/** Python script steps. */
 function pythonScriptPlan(o: PartOptions): Plan {
     return {
         steps: [
@@ -159,7 +159,7 @@ function pythonScriptPlan(o: PartOptions): Plan {
     };
 }
 
-/** Pasos del proyecto vacío. */
+/** Empty project steps. */
 function emptyPlan(o: PartOptions): Plan {
     return {
         steps: [

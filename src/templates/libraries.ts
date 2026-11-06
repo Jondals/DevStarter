@@ -1,11 +1,11 @@
 /**
  * templates/libraries.ts
  * ──────────────────────
- * Catálogo de librerías populares que se pueden añadir a cada stack desde el asistente
+ * Catalog of popular libraries that can be added to each stack from the wizard
  * (React Router, Zustand, Pinia, Zod, Helmet, pytest, Django REST Framework…).
  *
- * Cada librería indica a qué plantillas aplica y cómo se instala (npm, pip, composer
- * o un comando propio). Algunas además se dejan configuradas en el código (setup).
+ * Each library says which templates it applies to and how it is installed (npm, pip,
+ * composer or its own command). Some are also wired into the code (setup).
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,38 +23,38 @@ import {
 } from '../scaffold/demos';
 import { cmd, PartOptions, pipInstall, task, venvPython } from './types';
 
-/** Una librería que se puede añadir a un proyecto. */
+/** A library that can be added to a project. */
 export interface Library {
     id: string;
     label: string;
-    /** Texto corto al lado del nombre. */
+    /** Short text next to the name. */
     description: string;
-    /** Explicación para principiantes. */
+    /** Explanation for beginners. */
     detail: string;
     docs: string;
-    /** Plantillas a las que aplica. */
+    /** Templates it applies to. */
     templates: string[];
     npm?: string[];
     npmDev?: string[];
     pip?: string[];
     composer?: string[];
     composerDev?: string[];
-    /** Comando propio de instalación (cargo add, flutter pub add, astro add…). */
+    /** Custom install command (cargo add, flutter pub add, astro add…). */
     command?: (o: PartOptions) => string;
-    /** Configuración extra después de instalar (escribir ficheros, tocar código…). */
+    /** Extra setup after installing (write files, patch code…). */
     setup?: (o: PartOptions, log: Logger) => void;
-    /** Solo se usa como dependencia de Spring Initializr (lo gestiona la plantilla de Spring). */
+    /** Only used as a Spring Initializr dependency (handled by the Spring template). */
     springOnly?: boolean;
-    /** Página de demo que crea su setup en proyectos Vite (relativa al proyecto). */
+    /** Demo page its setup creates in Vite projects (relative to the project). */
     demo?: string;
 }
 
-// ─── Configuraciones (setup) ────────────────────────────────────────
+// ─── Setup functions ────────────────────────────────────────────────
 
 /**
- * Vitest: script "test" y un test de ejemplo que ya pasa.
- * @param o opciones del proyecto
- * @param log función para contar lo que se hace
+ * Vitest: a "test" script and an example test that already passes.
+ * @param o project options
+ * @param log function to report what is being done
  */
 function setupVitest(o: PartOptions, log: Logger): void {
     patchJson(path.join(o.dir, 'package.json'), function (json) {
@@ -78,10 +78,10 @@ describe('example', () => {
 }
 
 /**
- * Inserta una línea justo después de la primera línea que contenga `anchor`.
- * @param file fichero a modificar
- * @param anchor texto que marca dónde insertar
- * @param line línea a insertar
+ * Inserts a line right after the first line that contains `anchor`.
+ * @param file file to change
+ * @param anchor text that marks where to insert
+ * @param line line to insert
  */
 function insertAfter(file: string, anchor: string, line: string): void {
     const source = fs.readFileSync(file, 'utf8');
@@ -96,7 +96,7 @@ function insertAfter(file: string, anchor: string, line: string): void {
     fs.writeFileSync(file, source.slice(0, end + 1) + line + '\n' + source.slice(end + 1));
 }
 
-/** Express: activa Helmet (cabeceras de seguridad). */
+/** Express: enables Helmet (security headers). */
 function setupHelmet(o: PartOptions, log: Logger): void {
     const index = path.join(o.dir, 'src', 'index.js');
     insertAfter(index, "import cors from 'cors'", "import helmet from 'helmet'");
@@ -104,7 +104,7 @@ function setupHelmet(o: PartOptions, log: Logger): void {
     log('app.use(helmet()) in src/index.js');
 }
 
-/** Express: activa Morgan (una línea de log por petición). */
+/** Express: enables Morgan (one log line per request). */
 function setupMorgan(o: PartOptions, log: Logger): void {
     const index = path.join(o.dir, 'src', 'index.js');
     insertAfter(index, "import cors from 'cors'", "import morgan from 'morgan'");
@@ -112,7 +112,7 @@ function setupMorgan(o: PartOptions, log: Logger): void {
     log("app.use(morgan('dev')) in src/index.js");
 }
 
-/** Flask: activa CORS para que un frontend en otro puerto pueda llamar a la API. */
+/** Flask: enables CORS so a frontend on another port can call the API. */
 function setupFlaskCors(o: PartOptions, log: Logger): void {
     const app = path.join(o.dir, 'app.py');
     insertAfter(app, 'from flask import', 'from flask_cors import CORS');
@@ -121,21 +121,21 @@ function setupFlaskCors(o: PartOptions, log: Logger): void {
 }
 
 /**
- * Django: añade una app a INSTALLED_APPS.
- * @param o opciones del proyecto
- * @param app nombre de la app de Django
+ * Django: adds an app to INSTALLED_APPS.
+ * @param o project options
+ * @param app Django app name
  */
 function addDjangoApp(o: PartOptions, app: string): void {
     insertAfter(path.join(o.dir, 'config', 'settings.py'), "'django.contrib.staticfiles',", `    '${app}',`);
 }
 
-/** Django: registra Django REST Framework. */
+/** Django: registers Django REST Framework. */
 function setupDrf(o: PartOptions, log: Logger): void {
     addDjangoApp(o, 'rest_framework');
     log("'rest_framework' added to INSTALLED_APPS");
 }
 
-/** Django: registra django-cors-headers y permite el frontend de Vite. */
+/** Django: registers django-cors-headers and allows the Vite frontend. */
 function setupDjangoCors(o: PartOptions, log: Logger): void {
     const settings = path.join(o.dir, 'config', 'settings.py');
     addDjangoApp(o, 'corsheaders');
@@ -148,10 +148,10 @@ function setupDjangoCors(o: PartOptions, log: Logger): void {
 }
 
 /**
- * pytest: configuración y un test de ejemplo.
- * @param o opciones del proyecto
- * @param test contenido del fichero de test
- * @param log función para contar lo que se hace
+ * pytest: configuration and an example test.
+ * @param o project options
+ * @param test contents of the test file
+ * @param log function to report what is being done
  */
 function writePytest(o: PartOptions, test: string, log: Logger): void {
     write(path.join(o.dir, 'pytest.ini'), '[pytest]\npythonpath = .\ntestpaths = tests\n');
@@ -159,7 +159,7 @@ function writePytest(o: PartOptions, test: string, log: Logger): void {
     log('tests/test_app.py (run them with: python -m pytest)');
 }
 
-/** pytest para FastAPI (usa el TestClient). */
+/** pytest for FastAPI (uses the TestClient). */
 function setupPytestFastapi(o: PartOptions, log: Logger): void {
     writePytest(
         o,
@@ -180,7 +180,7 @@ def test_health():
     );
 }
 
-/** pytest para Flask (usa el cliente de pruebas de Flask). */
+/** pytest for Flask (uses Flask's test client). */
 function setupPytestFlask(o: PartOptions, log: Logger): void {
     writePytest(
         o,
@@ -197,7 +197,7 @@ def test_health():
     );
 }
 
-/** pytest para un script de Python. */
+/** pytest for a Python script. */
 function setupPytestScript(o: PartOptions, log: Logger): void {
     writePytest(
         o,
@@ -214,10 +214,10 @@ def test_main_says_hello(capsys):
 }
 
 /**
- * Crea una función de setup que escribe una página de demo (solo en proyectos Vite)
- * y actualiza el índice de demos.
- * @param writeDemo función que escribe la demo
- * @param page ruta de la demo, para el mensaje
+ * Creates a setup function that writes a demo page (Vite projects only)
+ * and updates the demo index.
+ * @param writeDemo function that writes the demo
+ * @param page path of the demo, for the message
  */
 function demoSetup(writeDemo: (dir: string) => void, page: string): (o: PartOptions, log: Logger) => void {
     return function (o: PartOptions, log: Logger): void {
@@ -231,40 +231,40 @@ function demoSetup(writeDemo: (dir: string) => void, page: string): (o: PartOpti
     };
 }
 
-// ─── Comandos de instalación propios ────────────────────────────────
+// ─── Custom install commands ────────────────────────────────────────
 
-/** Devuelve una función que crea `astro add <integración>`. */
+/** Returns a function that builds `astro add <integration>`. */
 function astroAdd(integration: string): (o: PartOptions) => string {
     return function (o: PartOptions): string {
         return o.pm.bin('astro', ['add', integration, '--yes']);
     };
 }
 
-/** Devuelve una función que crea `flutter pub add <paquete>`. */
+/** Returns a function that builds `flutter pub add <package>`. */
 function flutterAdd(pkg: string): () => string {
     return function (): string {
         return `flutter pub add ${pkg}`;
     };
 }
 
-/** Devuelve una función que crea `cargo add <crate>`. */
+/** Returns a function that builds `cargo add <crate>`. */
 function cargoAdd(args: string): () => string {
     return function (): string {
         return `cargo add ${args}`;
     };
 }
 
-// ─── Catálogo ───────────────────────────────────────────────────────
+// ─── Catalog ────────────────────────────────────────────────────────
 
 const reactLike = ['react', 'next'];
 const jsFrontends = ['react', 'next', 'vue', 'nuxt', 'svelte', 'sveltekit', 'vanilla', 'angular', 'expo'];
-/** Frontends web (todo menos móvil). */
+/** Web frontends (everything but mobile). */
 const webFrontends = ['vanilla', 'react', 'vue', 'svelte', 'angular', 'next', 'nuxt', 'sveltekit', 'astro'];
-/** Frontends hechos con Vite (donde se crean las páginas de demo). */
+/** Frontends built with Vite (where the demo pages are created). */
 const viteFrontends = ['vanilla', 'react', 'vue', 'svelte'];
 
 export const libraries: Library[] = [
-    // React y Next.js
+    // * React and Next.js
     {
         id: 'react-router',
         label: 'React Router',
@@ -319,7 +319,7 @@ export const libraries: Library[] = [
         templates: reactLike,
         npm: ['react-icons'],
     },
-    // Vue y Nuxt
+    // * Vue and Nuxt
     {
         id: 'vue-router',
         label: 'Vue Router',
@@ -347,7 +347,7 @@ export const libraries: Library[] = [
         templates: ['vue', 'nuxt'],
         npm: ['@vueuse/core'],
     },
-    // Svelte
+    // * Svelte
     {
         id: 'lucide-svelte',
         label: 'Lucide icons',
@@ -357,7 +357,7 @@ export const libraries: Library[] = [
         templates: ['svelte', 'sveltekit'],
         npm: ['@lucide/svelte'],
     },
-    // Comunes de frontend
+    // * Common to frontends
     {
         id: 'axios',
         label: 'Axios',
@@ -415,7 +415,7 @@ export const libraries: Library[] = [
         npmDev: ['vitest'],
         setup: setupVitest,
     },
-    // Creativas: 3D, juegos, arte, mapas, carruseles (con páginas de demo en proyectos Vite)
+    // * Creative: 3D, games, art, maps, carousels (with demo pages in Vite projects)
     {
         id: 'three',
         label: 'Three.js',
@@ -491,7 +491,7 @@ export const libraries: Library[] = [
         templates: webFrontends,
         npm: ['swiper'],
     },
-    // Astro
+    // * Astro
     {
         id: 'astro-mdx',
         label: 'MDX',
@@ -510,7 +510,7 @@ export const libraries: Library[] = [
         templates: ['astro'],
         command: astroAdd('react'),
     },
-    // Express y NestJS
+    // * Express and NestJS
     {
         id: 'helmet',
         label: 'Helmet',
@@ -567,7 +567,7 @@ export const libraries: Library[] = [
         templates: ['nest'],
         npm: ['@nestjs/swagger'],
     },
-    // Node.js script
+    // * Node.js script
     {
         id: 'chalk',
         label: 'Chalk',
@@ -586,7 +586,7 @@ export const libraries: Library[] = [
         templates: ['node-script'],
         npm: ['commander'],
     },
-    // Python
+    // * Python
     {
         id: 'pytest-fastapi',
         label: 'pytest',
@@ -692,7 +692,7 @@ export const libraries: Library[] = [
         pip: ['pytest'],
         setup: setupPytestScript,
     },
-    // Laravel
+    // * Laravel
     {
         id: 'debugbar',
         label: 'Laravel Debugbar',
@@ -711,7 +711,7 @@ export const libraries: Library[] = [
         templates: ['laravel'],
         composer: ['spatie/laravel-permission'],
     },
-    // Rust
+    // * Rust
     {
         id: 'serde',
         label: 'Serde',
@@ -730,7 +730,7 @@ export const libraries: Library[] = [
         templates: ['rust'],
         command: cargoAdd('tower-http --features cors'),
     },
-    // Spring Boot (dependencias de Spring Initializr: el id tras "spring-")
+    // * Spring Boot (Spring Initializr dependencies: the id after "spring-")
     {
         id: 'spring-actuator',
         label: 'Actuator',
@@ -758,7 +758,7 @@ export const libraries: Library[] = [
         templates: ['spring'],
         springOnly: true,
     },
-    // Flutter
+    // * Flutter
     {
         id: 'flutter-http',
         label: 'http',
@@ -788,14 +788,14 @@ export const libraries: Library[] = [
     },
 ];
 
-/** Excluye React y Next (ya tienen Zod junto a React Hook Form). */
+/** Excludes React and Next (they already get Zod with React Hook Form). */
 function notReactLike(id: string): boolean {
     return !reactLike.includes(id);
 }
 
 /**
- * Librerías disponibles para una plantilla.
- * @param templateId id de la plantilla
+ * Libraries available for a template.
+ * @param templateId template id
  */
 export function librariesFor(templateId: string): Library[] {
     const result: Library[] = [];
@@ -808,8 +808,8 @@ export function librariesFor(templateId: string): Library[] {
 }
 
 /**
- * Busca librerías por id.
- * @param ids identificadores
+ * Looks up libraries by id.
+ * @param ids identifiers
  */
 export function findLibraries(ids: string[]): Library[] {
     const result: Library[] = [];
@@ -822,8 +822,8 @@ export function findLibraries(ids: string[]): Library[] {
 }
 
 /**
- * Nombres de las librerías separados por comas (para los títulos de los pasos).
- * @param libs librerías
+ * Library names separated by commas (for the step titles).
+ * @param libs libraries
  */
 function labels(libs: Library[]): string {
     const names: string[] = [];
@@ -834,10 +834,10 @@ function labels(libs: Library[]): string {
 }
 
 /**
- * Pasos para instalar y configurar las librerías elegidas en una parte del proyecto.
- * Agrupa los paquetes para hacer una sola instalación por gestor.
- * @param libs librerías elegidas para esta parte
- * @param o opciones de la parte
+ * Steps to install and configure the chosen libraries in one part of the project.
+ * Packages are grouped so there is a single install per package manager.
+ * @param libs libraries chosen for this part
+ * @param o options of the part
  */
 export function librarySteps(libs: Library[], o: PartOptions): Step[] {
     const steps: Step[] = [];
@@ -853,7 +853,7 @@ export function librarySteps(libs: Library[], o: PartOptions): Step[] {
         composer.push(...(lib.composer ?? []));
         composerDev.push(...(lib.composerDev ?? []));
     }
-    // Sin repetidos (p. ej. Three.js y React Three Fiber instalan los dos "three").
+    // * No duplicates (e.g. Three.js and React Three Fiber both install "three").
     dedupe(npm);
     dedupe(npmDev);
     dedupe(pip);
@@ -902,14 +902,14 @@ export function librarySteps(libs: Library[], o: PartOptions): Step[] {
     return steps;
 }
 
-/** Las librerías solo-Spring las gestiona la propia plantilla de Spring Boot. */
+/** Spring-only libraries are handled by the Spring Boot template itself. */
 function isNotSpringOnly(lib: Library): boolean {
     return !lib.springOnly;
 }
 
 /**
- * Quita los elementos repetidos de una lista (modifica la propia lista).
- * @param list lista a limpiar
+ * Removes duplicate items from a list (changes the list in place).
+ * @param list list to clean
  */
 function dedupe(list: string[]): void {
     const unique = [...new Set(list)];

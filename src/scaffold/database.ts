@@ -1,11 +1,11 @@
 /**
  * scaffold/database.ts
  * ────────────────────
- * Integración con bases de datos para cada tipo de backend.
+ * Database integration for every kind of backend.
  *
- * La idea es la misma en todos: se instala el "driver" de la base de datos, se guarda
- * la conexión en un fichero .env y se añade una ruta /api/db para comprobar que conecta.
- * Este fichero genera el código de conexión (Node, Python) y ajusta Django y Laravel.
+ * The idea is the same everywhere: install the database "driver", store the connection
+ * in a .env file and add an /api/db route to check that it connects.
+ * This file generates the connection code (Node, Python) and adjusts Django and Laravel.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -16,14 +16,14 @@ export type Database = 'SQLite' | 'PostgreSQL' | 'MySQL' | 'MongoDB';
 export const allDatabases: Database[] = ['SQLite', 'PostgreSQL', 'MySQL', 'MongoDB'];
 
 /**
- * SQLite se guarda en un fichero; las demás necesitan un servidor (local, Docker o en la nube).
- * @param db base de datos elegida (o ninguna)
+ * SQLite is stored in a file; the others need a server (local, Docker or in the cloud).
+ * @param db chosen database (or none)
  */
 export function needsServer(db: Database | undefined): boolean {
     return !!db && db !== 'SQLite';
 }
 
-/** Usuario, contraseña y puerto por defecto. Coinciden con el docker-compose.yml que generamos. */
+/** Default user, password and port. They match the docker-compose.yml we generate. */
 export const credentials = {
     PostgreSQL: { user: 'postgres', password: 'postgres', port: 5432 },
     MySQL: { user: 'root', password: 'password', port: 3306 },
@@ -31,10 +31,10 @@ export const credentials = {
 };
 
 /**
- * URL de conexión según el "dialecto" que entiende cada librería.
- * @param db base de datos
- * @param name nombre del proyecto (se usa como nombre de la base de datos)
- * @param flavor node (pg, mysql2…), sqlalchemy (Python) o django (dj-database-url)
+ * Connection URL in the "dialect" each library understands.
+ * @param db database
+ * @param name project name (used as the database name)
+ * @param flavor node (pg, mysql2…), sqlalchemy (Python) or django (dj-database-url)
  */
 export function databaseUrl(db: Database, name: string, flavor: 'node' | 'sqlalchemy' | 'django' = 'node'): string {
     const n = snakeCase(name);
@@ -53,9 +53,9 @@ export function databaseUrl(db: Database, name: string, flavor: 'node' | 'sqlalc
 }
 
 /**
- * Línea del .env para proyectos Node.
- * @param db base de datos
- * @param name nombre del proyecto
+ * .env line for Node projects.
+ * @param db database
+ * @param name project name
  */
 export function nodeEnvLine(db: Database, name: string): string {
     return db === 'SQLite' ? 'DATABASE_FILE=data.db' : `DATABASE_URL=${databaseUrl(db, name)}`;
@@ -64,9 +64,9 @@ export function nodeEnvLine(db: Database, name: string): string {
 // ─── Node.js (Express, NestJS, Next.js, Nuxt, SvelteKit) ────────────
 
 /**
- * Paquetes npm del driver (y sus tipos si el proyecto usa TypeScript).
- * @param db base de datos
- * @param ts el proyecto usa TypeScript
+ * npm packages of the driver (and its types if the project uses TypeScript).
+ * @param db database
+ * @param ts the project uses TypeScript
  */
 export function nodePackages(db: Database, ts: boolean): { deps: string[]; devDeps: string[] } {
     switch (db) {
@@ -81,19 +81,19 @@ export function nodePackages(db: Database, ts: boolean): { deps: string[]; devDe
     }
 }
 
-/** Opciones del módulo de conexión de Node. */
+/** Options of the Node connection module. */
 export interface NodeModuleOptions {
     ts: boolean;
-    /** Expresión de donde se leen las variables (process.env, o `env` en SvelteKit). */
+    /** Expression the variables are read from (process.env, or `env` in SvelteKit). */
     env?: string;
-    /** Líneas extra al principio (imports propios del framework). */
+    /** Extra lines at the top (framework-specific imports). */
     header?: string;
 }
 
 /**
- * Código del módulo que conecta con la base de datos y exporta `checkDatabase()`.
- * @param db base de datos
- * @param opts lenguaje, origen de las variables y cabecera
+ * Code of the module that connects to the database and exports `checkDatabase()`.
+ * @param db database
+ * @param opts language, source of the variables and header
  */
 export function nodeModule(db: Database, opts: NodeModuleOptions): string {
     const env = opts.env ?? 'process.env';
@@ -146,8 +146,8 @@ export async function checkDatabase() {
 // ─── Python (FastAPI, Flask) ────────────────────────────────────────
 
 /**
- * Paquetes de pip para conectar con la base de datos.
- * @param db base de datos
+ * pip packages to connect to the database.
+ * @param db database
  */
 export function pythonPackages(db: Database): string[] {
     switch (db) {
@@ -163,9 +163,9 @@ export function pythonPackages(db: Database): string[] {
 }
 
 /**
- * Código de db.py con la función `check_database()`.
- * @param db base de datos
- * @param name nombre del proyecto
+ * Code of db.py with the `check_database()` function.
+ * @param db database
+ * @param name project name
  */
 export function pythonModule(db: Database, name: string): string {
     if (db === 'MongoDB') {
@@ -207,8 +207,8 @@ def check_database():
 // ─── Django ─────────────────────────────────────────────────────────
 
 /**
- * Paquetes extra de Django para cada base de datos.
- * @param db base de datos
+ * Extra Django packages for each database.
+ * @param db database
  */
 export function djangoPackages(db: Database): string[] {
     switch (db) {
@@ -217,15 +217,15 @@ export function djangoPackages(db: Database): string[] {
         case 'MySQL':
             return ['mysqlclient', 'dj-database-url', 'python-dotenv'];
         default:
-            return []; // SQLite viene configurado de serie
+            return []; // SQLite is configured out of the box
     }
 }
 
 /**
- * Cambia settings.py para leer la base de datos de DATABASE_URL (en el .env).
- * @param dir carpeta del proyecto Django
- * @param db base de datos
- * @param name nombre del proyecto
+ * Changes settings.py to read the database from DATABASE_URL (in the .env).
+ * @param dir Django project folder
+ * @param db database
+ * @param name project name
  */
 export function configureDjangoDatabase(dir: string, db: Database, name: string): void {
     if (db === 'SQLite') {
@@ -249,10 +249,10 @@ export function configureDjangoDatabase(dir: string, db: Database, name: string)
 // ─── Laravel ────────────────────────────────────────────────────────
 
 /**
- * Laravel ya trae SQLite; para MySQL/PostgreSQL basta con cambiar el .env.
- * @param dir carpeta del proyecto Laravel
- * @param db base de datos
- * @param name nombre del proyecto
+ * Laravel already ships with SQLite; for MySQL/PostgreSQL changing the .env is enough.
+ * @param dir Laravel project folder
+ * @param db database
+ * @param name project name
  */
 export function configureLaravelDatabase(dir: string, db: Database, name: string): void {
     if (db === 'SQLite' || db === 'MongoDB') {

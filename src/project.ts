@@ -1,13 +1,13 @@
 /**
  * project.ts
  * ──────────
- * Junta todo lo que se eligió en el asistente (plantilla, backend opcional, base de datos,
- * librerías y extras) y lo convierte en una lista de pasos que el terminal ejecuta en orden.
+ * Gathers everything chosen in the wizard (template, optional backend, database,
+ * libraries and extras) and turns it into a list of steps that the terminal runs in order.
  *
- *   Proyecto simple:     <carpeta>/<nombre>/...
- *   Proyecto full-stack: <carpeta>/<nombre>/frontend   (o mobile)
- *                        <carpeta>/<nombre>/backend
- *                        <carpeta>/<nombre>/package.json  ← "npm run dev" arranca los dos
+ *   Single project:     <folder>/<name>/...
+ *   Full-stack project: <folder>/<name>/frontend   (or mobile)
+ *                       <folder>/<name>/backend
+ *                       <folder>/<name>/package.json  ← "npm run dev" starts both
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -31,18 +31,18 @@ import {
     writeVscodeRecommendations,
 } from './scaffold/extras';
 
-/** Extras que se pueden marcar en el asistente. */
+/** Extras that can be ticked in the wizard. */
 export type Extra = 'git' | 'publish' | 'ci' | 'license' | 'compose' | 'dockerfile' | 'prettier' | 'vscode';
 
-/** Lo que devuelve el asistente. */
+/** What the wizard returns. */
 export interface ProjectChoice {
     template: Template;
-    /** Backend añadido a un frontend o app móvil (proyecto full-stack). */
+    /** Backend added to a frontend or mobile app (full-stack project). */
     backend?: Template;
     typescript: boolean;
     tailwind: boolean;
     database?: Database;
-    /** Identificadores de las librerías elegidas (de frontend y de backend). */
+    /** Ids of the chosen libraries (frontend and backend). */
     libraries: string[];
     extras: Extra[];
     pm: PackageManager;
@@ -51,27 +51,27 @@ export interface ProjectChoice {
     beginner: boolean;
 }
 
-/** El plan completo del proyecto. */
+/** The complete plan of the project. */
 export interface BuiltProject {
     root: string;
     steps: Step[];
-    /** Servidores a arrancar, con la carpeta relativa a la raíz. */
+    /** Servers to start, with their folder relative to the root. */
     servers: DevServer[];
-    /** Comando que arranca todo desde la raíz (full-stack con Node). */
+    /** Command that starts everything from the root (full-stack with Node). */
     devAll?: string;
-    /** Candidatos a fichero principal, relativos a la raíz. */
+    /** Candidates for the main file, relative to the root. */
     mainFiles: string[];
 }
 
-/** Lo mínimo para saber qué partes tiene un proyecto. */
+/** The minimum needed to know which parts a project has. */
 interface Parts {
     template: Template;
     backend?: Template;
 }
 
 /**
- * La plantilla que se encarga de la base de datos: el backend si lo hay, si no la principal.
- * @param choice plantilla y backend
+ * The template in charge of the database: the backend if there is one, otherwise the main one.
+ * @param choice template and backend
  */
 export function databaseOwner(choice: Parts): Template | undefined {
     const owner = choice.backend ?? choice.template;
@@ -79,17 +79,17 @@ export function databaseOwner(choice: Parts): Template | undefined {
 }
 
 /**
- * ¿Alguna parte del proyecto usa npm/pnpm/bun?
- * @param choice plantilla y backend
+ * Whether any part of the project uses npm/pnpm/bun.
+ * @param choice template and backend
  */
 export function usesNode(choice: Parts): boolean {
     return !!choice.template?.node || !!choice.backend?.node;
 }
 
 /**
- * Herramientas que tienen que estar instaladas antes de empezar.
- * Node va primero porque pnpm y bun se instalan con él.
- * @param choice elección del asistente
+ * Tools that must be installed before starting.
+ * ? Node goes first because pnpm and bun are installed with it.
+ * @param choice the wizard's choice
  */
 export function requiredTools(choice: ProjectChoice): ToolId[] {
     const tools = new Set<ToolId>([...choice.template.requires, ...(choice.backend?.requires ?? [])]);
@@ -104,7 +104,7 @@ export function requiredTools(choice: ProjectChoice): ToolId[] {
     return list;
 }
 
-/** Orden: Node primero, el resto como estaban. */
+/** Order: Node first, the rest as they were. */
 function nodeFirst(a: ToolId, b: ToolId): number {
     if (a === 'node') {
         return -1;
@@ -113,8 +113,8 @@ function nodeFirst(a: ToolId, b: ToolId): number {
 }
 
 /**
- * Resumen de una línea, p. ej. "React · TypeScript · Tailwind CSS + Express API · PostgreSQL · 3 libraries · Git · npm".
- * @param choice elección (sin nombre ni carpeta)
+ * One-line summary, e.g. "React · TypeScript · Tailwind CSS + Express API · PostgreSQL · 3 libraries · Git · npm".
+ * @param choice choice (without name or folder)
  */
 export function describe(choice: Omit<ProjectChoice, 'name' | 'parentDir' | 'beginner'>): string {
     const t = choice.template;
@@ -152,7 +152,7 @@ export function describe(choice: Omit<ProjectChoice, 'name' | 'parentDir' | 'beg
     return [head.join(' · ') + (choice.backend ? ` + ${choice.backend.label}` : ''), ...rest].join(' · ');
 }
 
-/** Cómo se llama, en lenguaje normal, lo que se va a crear según la categoría de la plantilla. */
+/** Plain-language name of what will be created, by template category. */
 const plainNouns: Record<Template['category'], string> = {
     Frontend: 'a website',
     'Full-stack': 'a web app',
@@ -162,18 +162,18 @@ const plainNouns: Record<Template['category'], string> = {
 };
 
 /**
- * Pone "a" o "an" delante de una palabra ("an Express", "a Django").
- * @param word palabra a la que va el artículo
+ * Puts "a" or "an" before a word ("an Express", "a Django").
+ * @param word word the article goes with
  */
 function withArticle(word: string): string {
     return `${/^[aeiou]/i.test(word) ? 'an' : 'a'} ${word}`;
 }
 
 /**
- * Resumen "para personas" de lo que se va a crear, sin siglas ni símbolos:
+ * "Human" summary of what will be created, without acronyms or symbols:
  * "A website made with React and TypeScript, styled with Tailwind CSS, with an Express API
  * backend and a SQLite database, plus Zustand and GSAP."
- * @param choice elección del asistente
+ * @param choice the wizard's choice
  */
 export function plainSummary(choice: Omit<ProjectChoice, 'name' | 'parentDir' | 'beginner'>): string {
     const t = choice.template;
@@ -203,16 +203,16 @@ export function plainSummary(choice: Omit<ProjectChoice, 'name' | 'parentDir' | 
 }
 
 /**
- * ¿La plantilla usa Python?
- * @param t plantilla (o ninguna)
+ * Whether the template uses Python.
+ * @param t template (or none)
  */
 function isPython(t?: Template): boolean {
     return !!t?.requires.includes('python');
 }
 
 /**
- * Separa las librerías elegidas entre la parte principal y el backend.
- * @param choice elección del asistente
+ * Splits the chosen libraries between the main part and the backend.
+ * @param choice the wizard's choice
  */
 function splitLibraries(choice: ProjectChoice): { front: Library[]; back: Library[] } {
     const front: Library[] = [];
@@ -228,8 +228,8 @@ function splitLibraries(choice: ProjectChoice): { front: Library[]; back: Librar
 }
 
 /**
- * Identificadores de una lista de librerías.
- * @param libs librerías
+ * Ids of a list of libraries.
+ * @param libs libraries
  */
 function ids(libs: Library[]): string[] {
     const result: string[] = [];
@@ -240,9 +240,9 @@ function ids(libs: Library[]): string[] {
 }
 
 /**
- * Construye el plan completo del proyecto.
- * @param choice elección del asistente
- * @param python comando de Python del sistema (para plantillas Python)
+ * Builds the complete plan of the project.
+ * @param choice the wizard's choice
+ * @param python system Python command (for Python templates)
  */
 export function buildProject(choice: ProjectChoice, python?: string): BuiltProject {
     const { template, backend, name, pm } = choice;
@@ -252,7 +252,7 @@ export function buildProject(choice: ProjectChoice, python?: string): BuiltProje
     const libs = splitLibraries(choice);
     const steps: Step[] = [];
 
-    // ── Opciones de cada parte
+    // ── Options of each part
     const frontFolder = fullstack ? (template.category === 'Mobile' ? 'mobile' : 'frontend') : name;
     const frontParent = fullstack ? root : choice.parentDir;
     const front: PartOptions = {
@@ -302,7 +302,7 @@ export function buildProject(choice: ProjectChoice, python?: string): BuiltProje
         steps.push(...backPlan.steps, ...librarySteps(libs.back, back));
     }
 
-    // ── Servidores de desarrollo
+    // ── Dev servers
     const servers: DevServer[] = [];
     if (frontPlan.server) {
         const label = fullstack ? (template.category === 'Mobile' ? 'Mobile app' : 'Frontend') : template.label;
@@ -312,7 +312,7 @@ export function buildProject(choice: ProjectChoice, python?: string): BuiltProje
         servers.push({ label: 'Backend', folder: 'backend', ...backPlan.server });
     }
 
-    // ── Raíz full-stack: un "npm run dev" que arranca frontend y backend a la vez
+    // ── Full-stack root: one "npm run dev" that starts frontend and backend together
     let devAll: string | undefined;
     if (fullstack && usesNode(choice) && servers.length > 1) {
         const runAll = pm.run('dev');
@@ -328,7 +328,7 @@ export function buildProject(choice: ProjectChoice, python?: string): BuiltProje
 
     steps.push(...extraSteps(choice, { root, front, back, devAll }));
 
-    // ── Guía o README
+    // ── Guide or README
     const mainFiles: string[] = [];
     for (const f of frontPlan.mainFiles) {
         mainFiles.push(fullstack ? `${frontFolder}/${f}` : f);
@@ -369,7 +369,7 @@ export function buildProject(choice: ProjectChoice, python?: string): BuiltProje
     return { root, steps, servers, devAll, mainFiles };
 }
 
-/** Datos que necesitan los pasos de extras. */
+/** Data the extras steps need. */
 interface ExtraContext {
     root: string;
     front: PartOptions;
@@ -378,9 +378,9 @@ interface ExtraContext {
 }
 
 /**
- * Pasos de los extras: Docker Compose, Prettier, CI, licencia, pnpm y ajustes del editor.
- * @param choice elección del asistente
- * @param ctx carpetas y opciones de cada parte
+ * Steps of the extras: Docker Compose, Prettier, CI, license, pnpm and editor settings.
+ * @param choice the wizard's choice
+ * @param ctx folders and options of each part
  */
 function extraSteps(choice: ProjectChoice, ctx: ExtraContext): Step[] {
     const { template, backend, pm, name } = choice;
@@ -398,7 +398,7 @@ function extraSteps(choice: ProjectChoice, ctx: ExtraContext): Step[] {
     }
 
     if (extras.has('prettier') && usesNode(choice)) {
-        // En full-stack basta con configurarlo en la raíz; formatea todo lo que cuelga de ella.
+        // ? In full-stack projects configuring it at the root is enough; it formats everything below it.
         let prettierDir = front.dir;
         if (devAll) {
             prettierDir = root;
@@ -441,7 +441,7 @@ function extraSteps(choice: ProjectChoice, ctx: ExtraContext): Step[] {
         );
     }
 
-    // pnpm: que "pnpm dev" no falle por scripts de build sin aprobar.
+    // ! pnpm: make sure "pnpm dev" does not fail because of unapproved build scripts.
     if (pm.id === 'pnpm' && usesNode(choice)) {
         steps.push(
             task(
@@ -475,8 +475,8 @@ function extraSteps(choice: ProjectChoice, ctx: ExtraContext): Step[] {
 }
 
 /**
- * Extensiones de VS Code recomendadas según las plantillas y extras elegidos.
- * @param choice elección del asistente
+ * Recommended VS Code extensions for the chosen templates and extras.
+ * @param choice the wizard's choice
  */
 function recommendedExtensions(choice: ProjectChoice): string[] {
     const extras = new Set(choice.extras);
@@ -497,8 +497,8 @@ function recommendedExtensions(choice: ProjectChoice): string[] {
 }
 
 /**
- * Ajustes del espacio de trabajo: con Python, que VS Code use directamente el .venv.
- * @param choice elección del asistente
+ * Workspace settings: with Python, make VS Code use the .venv directly.
+ * @param choice the wizard's choice
  */
 function editorSettings(choice: ProjectChoice): Record<string, unknown> {
     let folder: string | undefined;
@@ -515,10 +515,10 @@ function editorSettings(choice: ProjectChoice): Record<string, unknown> {
     return { 'python.defaultInterpreterPath': parts.join('/') };
 }
 
-/** Datos para la guía. */
+/** Data for the guide. */
 interface GuideContext {
     root: string;
-    /** Carpeta del frontend (o de la parte principal). */
+    /** Folder of the frontend (or of the main part). */
     frontDir: string;
     servers: DevServer[];
     devAll?: string;
@@ -529,9 +529,9 @@ interface GuideContext {
 }
 
 /**
- * Reúne la información de GETTING_STARTED.md / README.md.
- * @param choice elección del asistente
- * @param ctx datos calculados al construir el proyecto
+ * Gathers the information for GETTING_STARTED.md / README.md.
+ * @param choice the wizard's choice
+ * @param ctx data computed while building the project
  */
 function buildGuideInfo(choice: ProjectChoice, ctx: GuideContext): GuideInfo {
     const extras = new Set(choice.extras);
@@ -570,7 +570,7 @@ function buildGuideInfo(choice: ProjectChoice, ctx: GuideContext): GuideInfo {
     for (const n of ctx.backPlan?.notes ?? []) {
         notes.push(`Backend: ${n}`);
     }
-    // Si la librería creó su página de demo, enlazamos a ella en el servidor del frontend.
+    // * If the library created its demo page, link to it on the frontend server.
     const frontUrl = ctx.servers[0]?.url;
     const libraries: Array<{ label: string; docs: string; demo?: string }> = [];
     for (const lib of ctx.libraries) {
@@ -591,11 +591,11 @@ function buildGuideInfo(choice: ProjectChoice, ctx: GuideContext): GuideInfo {
 }
 
 /**
- * Pasos de Git: .gitignore correcto, primer commit y (opcional) publicar en GitHub.
- * @param choice elección del asistente
- * @param root carpeta raíz
- * @param front opciones de la parte principal
- * @param back opciones del backend (si lo hay)
+ * Git steps: a proper .gitignore, the first commit and (optionally) publishing to GitHub.
+ * @param choice the wizard's choice
+ * @param root root folder
+ * @param front options of the main part
+ * @param back options of the backend (if any)
  */
 function gitSteps(choice: ProjectChoice, root: string, front: PartOptions, back?: PartOptions): Step[] {
     const extras = new Set(choice.extras);
@@ -608,11 +608,11 @@ function gitSteps(choice: ProjectChoice, root: string, front: PartOptions, back?
             'Preparing Git repository',
             function () {
                 for (const part of parts) {
-                    // Algunos generadores crean su propio repositorio; queremos uno solo en la raíz.
+                    // ! Some generators create their own repository; we want a single one at the root.
                     if (back) {
                         fs.rmSync(path.join(part, '.git'), { recursive: true, force: true });
                     }
-                    // Nunca subir dependencias descargadas ni secretos.
+                    // ! Never commit downloaded dependencies or secrets.
                     const entries = ['.env'];
                     if (fs.existsSync(path.join(part, 'package.json'))) {
                         entries.push('node_modules/', 'dist/');
@@ -625,12 +625,10 @@ function gitSteps(choice: ProjectChoice, root: string, front: PartOptions, back?
             },
             true,
         ),
-        cmd(
-            'Creating Git repository',
-            'git init -q && git add -A && git commit -q -m "Initial commit from DevStarter"',
-            root,
-            true,
-        ),
+        cmd('Creating Git repository', 'git init -q && git add -A', root, true),
+        // ! Separate step: the commit fails when Git has no user.name/user.email yet, but the
+        // ! repository above must still exist (the person can commit later).
+        cmd('Saving the first commit', 'git commit -q -m "Initial commit from DevStarter"', root, true),
     ];
     if (extras.has('publish')) {
         steps.push(

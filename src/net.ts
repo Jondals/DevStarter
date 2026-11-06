@@ -1,29 +1,29 @@
 /**
  * net.ts
  * ──────
- * Descargas de DevStarter, todas por el mismo camino y con las mismas protecciones:
- *  - Solo HTTPS (nada de http://).
- *  - Tiempo máximo de espera.
- *  - Tamaño máximo: si el servidor envía más de lo esperado se corta la descarga en vez de
- *    llenar la memoria.
- * Lo usan: la consulta de versiones (npm, nodejs.org), el instalador oficial de Node.js y la
- * descarga de proyectos de Spring Boot.
+ * DevStarter's downloads, all through the same path and with the same protections:
+ *  - HTTPS only (no http://).
+ *  - A maximum waiting time.
+ *  - A maximum size: if the server sends more than expected the download is cut instead of
+ *    filling the memory.
+ * Used by: version lookups (npm, nodejs.org), the official Node.js installer and the
+ * Spring Boot project download.
  */
 
-/** Opciones de una descarga. */
+/** Options of a download. */
 export interface FetchOptions {
-    /** Milisegundos antes de rendirse (15 s por defecto). */
+    /** Milliseconds before giving up (15 s by default). */
     timeoutMs?: number;
-    /** Bytes máximos que se aceptan (5 MB por defecto). */
+    /** Maximum accepted bytes (5 MB by default). */
     maxBytes?: number;
-    /** Cabecera Accept. */
+    /** Accept header. */
     accept?: string;
 }
 
 /**
- * Descarga una dirección HTTPS y devuelve los bytes.
- * @param url dirección (tiene que empezar por https://)
- * @param opts tiempo máximo, tamaño máximo y tipo de contenido
+ * Downloads an HTTPS address and returns the bytes.
+ * @param url address (must start with https://)
+ * @param opts maximum time, maximum size and content type
  */
 export async function fetchBuffer(url: string, opts: FetchOptions = {}): Promise<Buffer> {
     if (!url.startsWith('https://')) {
@@ -41,7 +41,7 @@ export async function fetchBuffer(url: string, opts: FetchOptions = {}): Promise
     if (declared > maxBytes) {
         throw new Error(`${url} is ${declared} bytes, more than the ${maxBytes} allowed`);
     }
-    // Se lee por trozos para cortar en cuanto se pasa del límite (aunque el servidor no diga el tamaño).
+    // ! Read in chunks to stop as soon as the limit is exceeded (even if the server does not send the size).
     const chunks: Buffer[] = [];
     let total = 0;
     const reader = response.body?.getReader();
@@ -64,18 +64,18 @@ export async function fetchBuffer(url: string, opts: FetchOptions = {}): Promise
 }
 
 /**
- * Descarga un JSON.
- * @param url dirección https
- * @param opts opciones de la descarga
+ * Downloads JSON.
+ * @param url https address
+ * @param opts download options
  */
 export async function fetchJson(url: string, opts: FetchOptions = {}): Promise<any> {
     return JSON.parse((await fetchBuffer(url, { accept: 'application/json', ...opts })).toString('utf8'));
 }
 
 /**
- * Descarga un texto.
- * @param url dirección https
- * @param opts opciones de la descarga
+ * Downloads text.
+ * @param url https address
+ * @param opts download options
  */
 export async function fetchText(url: string, opts: FetchOptions = {}): Promise<string> {
     return (await fetchBuffer(url, opts)).toString('utf8');

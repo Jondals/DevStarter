@@ -1,11 +1,11 @@
 /**
  * scripts/smoke/vscode-mock.js
  * ────────────────────────────
- * Imitación mínima de la API "vscode" para ejecutar el terminal y las plantillas
- * de DevStarter desde Node, sin abrir VS Code. Solo implementa lo que usan.
+ * Minimal imitation of the "vscode" API to run DevStarter's terminal and templates
+ * from Node, without opening VS Code. It only implements what they use.
  */
 
-/** Imitación de vscode.EventEmitter. */
+/** Imitation of vscode.EventEmitter. */
 class EventEmitter {
     constructor() {
         this.listeners = [];
@@ -25,14 +25,14 @@ class EventEmitter {
     }
 }
 
-/** Imitación de vscode.ThemeIcon. */
+/** Imitation of vscode.ThemeIcon. */
 class ThemeIcon {
     constructor(id) {
         this.id = id;
     }
 }
 
-/** Si SMOKE_VERBOSE=1, la salida del terminal se ve en la consola. */
+/** With SMOKE_VERBOSE=1 the terminal output is shown in the console. */
 const verbose = process.env.SMOKE_VERBOSE === '1';
 
 module.exports = {

@@ -1,5 +1,5 @@
-// Compila scripts/smoke/run.ts (con la API de VS Code imitada) y lo ejecuta.
-// Uso: node scripts/smoke/build.mjs [casos...]
+// Bundles scripts/smoke/run.ts (with a fake VS Code API) and runs it.
+// Usage: node scripts/smoke/build.mjs [cases...]
 import { build } from 'esbuild';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';

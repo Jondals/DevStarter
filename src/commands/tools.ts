@@ -1,7 +1,7 @@
 /**
  * commands/tools.ts
  * ──────────────────
- * Comando "Check & Update My Tools": qué hay instalado, qué falta y qué se puede actualizar.
+ * "Check & Update My Tools" command: what is installed, what is missing and what can be updated.
  */
 import * as vscode from 'vscode';
 import { DevStarterTerminal, Logger, Step } from '../terminal';
@@ -22,25 +22,27 @@ import {
 import { isNewer, latestNodeLts, latestNpmVersion } from '../updates';
 import { installNodeFromOfficialMsi, toolUpdateStep, UpdateTarget } from '../toolupdate';
 import { palette, style, symbols } from '../ui';
+import { offerScriptsFix } from '../psPolicy';
+import { background } from '../log';
 import { Missing, recheckTool, recheckPackageManager, installSteps } from './install';
 
-// ─── Revisar y actualizar herramientas ──────────────────────────────
+// ─── Checking and updating tools ────────────────────────────────────
 
-/** Una opción de la lista de "Check & Update My Tools". */
+/** An option of the "Check & Update My Tools" list. */
 type ToolAction = vscode.QuickPickItem & { steps: Step[] };
 
 /**
- * Pasos para actualizar una herramienta. Comprueban después que la versión cambió de verdad
- * y, si no, lo explican (ver toolupdate.ts). Son opcionales: si uno falla, siguen los demás.
- * @param target qué actualizar y cómo
+ * Steps to update a tool. They check afterwards that the version really changed
+ * and explain it if not (see toolupdate.ts). They are optional: if one fails, the rest go on.
+ * @param target what to update and how
  */
 function updateStepsFor(target: UpdateTarget): Step[] {
     return [toolUpdateStep(target)];
 }
 
 /**
- * Función que lee la versión instalada de una herramienta (sin caché).
- * @param id herramienta
+ * Function that reads the installed version of a tool (without cache).
+ * @param id tool
  */
 function toolVersionReader(id: ToolId): () => Promise<string | undefined> {
     return async function (): Promise<string | undefined> {
@@ -49,8 +51,8 @@ function toolVersionReader(id: ToolId): () => Promise<string | undefined> {
 }
 
 /**
- * Función que lee la versión instalada de npm, pnpm o bun (sin caché).
- * @param id gestor de paquetes
+ * Function that reads the installed version of npm, pnpm or bun (without cache).
+ * @param id package manager
  */
 function pmVersionReader(id: PackageManagerId): () => Promise<string | undefined> {
     return async function (): Promise<string | undefined> {
@@ -64,8 +66,8 @@ function pmVersionReader(id: PackageManagerId): () => Promise<string | undefined
 }
 
 /**
- * Segunda vía para Node.js cuando winget no tiene la última versión: el instalador oficial.
- * @param latest última versión de Node.js LTS
+ * Second route for Node.js when winget does not have the latest version: the official installer.
+ * @param latest latest Node.js LTS version
  */
 function nodeFallback(latest: string | undefined): (log: Logger) => Promise<boolean> {
     return async function (log: Logger): Promise<boolean> {
@@ -73,10 +75,12 @@ function nodeFallback(latest: string | undefined): (log: Logger) => Promise<bool
     };
 }
 
-/** Comando "Check & Update My Tools": qué hay instalado, qué falta y qué se puede actualizar. */
+/** "Check & Update My Tools" command: what is installed, what is missing and what can be updated. */
 export async function checkTools(): Promise<void> {
     clearToolCache();
     await refreshPath();
+    // * Windows: also catch the "running scripts is disabled" PowerShell problem.
+    background('checking the PowerShell policy', offerScriptsFix());
     const term = await DevStarterTerminal.create('DevStarter · Tools', { verbose: false, beginner: true });
     term.section('Your development tools');
     term.line(style.gray('  Checking installed versions and the latest releases…'));
@@ -187,11 +191,11 @@ export async function checkTools(): Promise<void> {
 }
 
 /**
- * Escribe el estado de npm/pnpm/bun y añade a la lista las instalaciones y actualizaciones posibles.
+ * Writes the status of npm/pnpm/bun and adds the possible installs and updates to the list.
  * @param term terminal
- * @param pms gestores detectados
- * @param latest última versión conocida de cada uno
- * @param actions lista donde añadir las opciones
+ * @param pms detected package managers
+ * @param latest latest known version of each one
+ * @param actions list to add the options to
  */
 function addPackageManagerLines(
     term: DevStarterTerminal,
@@ -235,7 +239,7 @@ function addPackageManagerLines(
             symbols.warn,
         );
         const installer = packageManagerInstaller(pm.id);
-        // pnpm en Windows se instala con npm, así que hace falta Node.
+        // ? On Windows pnpm is installed with npm, so Node is needed.
         if (installer && (hasNpm || pm.id === 'bun' || process.platform !== 'win32')) {
             const missing: Missing = {
                 name: pm.id,

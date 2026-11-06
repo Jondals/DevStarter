@@ -1,11 +1,11 @@
 /**
  * scaffold/extras.ts
  * ──────────────────
- * Extras que se pueden añadir a cualquier proyecto:
- *  - GETTING_STARTED.md (principiantes) o README.md en la raíz (proyectos full-stack).
- *  - package.json en la raíz de un full-stack para arrancar todo con un comando.
- *  - Extensiones recomendadas de VS Code, EditorConfig y Prettier.
- *  - Integración continua con GitHub Actions y licencia MIT.
+ * Extras that can be added to any project:
+ *  - GETTING_STARTED.md (beginners) or a root README.md (full-stack projects).
+ *  - A root package.json in full-stack projects to start everything with one command.
+ *  - Recommended VS Code extensions, EditorConfig and Prettier.
+ *  - Continuous integration with GitHub Actions and an MIT license.
  */
 import * as cp from 'child_process';
 import * as fs from 'fs';
@@ -13,35 +13,35 @@ import * as path from 'path';
 import { PackageManager } from '../tools';
 import { patchJson, write } from './files';
 
-/** Un proceso que hay que tener en marcha mientras se programa (p. ej. el servidor del frontend). */
+/** A process that must be running while you code (e.g. the frontend server). */
 export interface DevServer {
     label: string;
-    /** Carpeta relativa a la raíz del proyecto ('' si es la propia raíz). */
+    /** Folder relative to the project root ('' for the root itself). */
     folder: string;
     command: string;
     url?: string;
 }
 
-// ─── Guía para principiantes y README ───────────────────────────────
+// ─── Beginner guide and README ──────────────────────────────────────
 
-/** Datos para escribir la guía o el README. */
+/** Data to write the guide or the README. */
 export interface GuideInfo {
     name: string;
     stack: string;
     servers: DevServer[];
-    /** Comando único que arranca todo (solo en proyectos full-stack). */
+    /** Single command that starts everything (full-stack projects only). */
     devAll?: string;
     mainFile?: string;
     docs: string[];
     notes: string[];
     extras: string[];
-    /** Librerías añadidas, con su documentación y (si la hay) la URL de su demo. */
+    /** Added libraries, with their docs and (if any) the URL of their demo. */
     libraries: Array<{ label: string; docs: string; demo?: string }>;
 }
 
 /**
- * Bloque de "cómo arrancarlo", compartido por la guía y el README.
- * @param info datos del proyecto
+ * "How to start it" block, shared by the guide and the README.
+ * @param info project data
  */
 function runSection(info: GuideInfo): string {
     if (info.devAll) {
@@ -78,8 +78,8 @@ function runSection(info: GuideInfo): string {
 }
 
 /**
- * Convierte una lista en viñetas de Markdown.
- * @param items elementos
+ * Turns a list into Markdown bullets.
+ * @param items items
  */
 function bullets(items: string[]): string {
     const lines: string[] = [];
@@ -90,9 +90,9 @@ function bullets(items: string[]): string {
 }
 
 /**
- * Escribe GETTING_STARTED.md: los primeros pasos explicados para principiantes.
- * @param root carpeta raíz del proyecto
- * @param info datos del proyecto
+ * Writes GETTING_STARTED.md: the first steps explained for beginners.
+ * @param root project root folder
+ * @param info project data
  */
 export function writeGettingStarted(root: string, info: GuideInfo): void {
     const libraryLines: string[] = [];
@@ -162,9 +162,9 @@ export function writeGettingStarted(root: string, info: GuideInfo): void {
 }
 
 /**
- * README de la raíz de un proyecto full-stack (para quien ya sabe programar).
- * @param root carpeta raíz del proyecto
- * @param info datos del proyecto
+ * Root README of a full-stack project (for people who already code).
+ * @param root project root folder
+ * @param info project data
  */
 export function writeRootReadme(root: string, info: GuideInfo): void {
     const structure: string[] = [];
@@ -190,14 +190,14 @@ export function writeRootReadme(root: string, info: GuideInfo): void {
     );
 }
 
-// ─── Proyecto full-stack ────────────────────────────────────────────
+// ─── Full-stack project ─────────────────────────────────────────────
 
 /**
- * package.json en la raíz con un script "dev" que arranca frontend y backend a la vez
- * gracias a `concurrently` (cada uno con su color en el terminal).
- * @param root carpeta raíz
- * @param name nombre del proyecto
- * @param servers servidores a arrancar
+ * Root package.json with a "dev" script that starts frontend and backend together
+ * thanks to `concurrently` (each one with its own color in the terminal).
+ * @param root root folder
+ * @param name project name
+ * @param servers servers to start
  */
 export function writeFullstackRoot(root: string, name: string, servers: DevServer[]): void {
     const names: string[] = [];
@@ -218,11 +218,11 @@ export function writeFullstackRoot(root: string, name: string, servers: DevServe
 // ─── VS Code ────────────────────────────────────────────────────────
 
 /**
- * .vscode/extensions.json (VS Code ofrece instalar estas extensiones al abrir el proyecto)
- * y, opcionalmente, .vscode/settings.json.
- * @param root carpeta raíz
- * @param extensions identificadores de extensiones
- * @param settings ajustes del espacio de trabajo
+ * .vscode/extensions.json (VS Code offers to install these extensions when opening the project)
+ * and, optionally, .vscode/settings.json.
+ * @param root root folder
+ * @param extensions extension ids
+ * @param settings workspace settings
  */
 export function writeVscodeRecommendations(
     root: string,
@@ -241,11 +241,11 @@ export function writeVscodeRecommendations(
     }
 }
 
-// ─── Formato de código ──────────────────────────────────────────────
+// ─── Code formatting ────────────────────────────────────────────────
 
 /**
- * .editorconfig: misma sangría y finales de línea en cualquier editor.
- * @param root carpeta raíz
+ * .editorconfig: same indentation and line endings in any editor.
+ * @param root root folder
  */
 export function writeEditorConfig(root: string): void {
     write(
@@ -275,8 +275,8 @@ trim_trailing_whitespace = false
 }
 
 /**
- * Configura Prettier (formateador de código) en un proyecto con package.json.
- * @param dir carpeta del proyecto
+ * Configures Prettier (code formatter) in a project with a package.json.
+ * @param dir project folder
  */
 export function configurePrettier(dir: string): void {
     write(path.join(dir, '.prettierrc'), JSON.stringify({ semi: false, singleQuote: true }, null, 2) + '\n');
@@ -291,22 +291,22 @@ export function configurePrettier(dir: string): void {
 
 // ─── GitHub Actions ─────────────────────────────────────────────────
 
-/** Tipo de proyecto para elegir los pasos de CI. */
+/** Kind of project, to choose the CI steps. */
 export type CiKind = 'node' | 'python' | 'go' | 'rust' | 'dotnet' | 'java' | 'php' | 'flutter';
 
-/** Una parte del proyecto que la CI debe compilar/probar. */
+/** A part of the project that CI must build/test. */
 export interface CiPart {
-    /** Nombre del job (frontend, backend, app…). */
+    /** Job name (frontend, backend, app…). */
     job: string;
-    /** Carpeta relativa a la raíz ('' = raíz). */
+    /** Folder relative to the root ('' = root). */
     folder: string;
     kind: CiKind;
 }
 
 /**
- * Pasos de CI de un proyecto Node según el gestor de paquetes.
- * Build y test solo se ejecutan si el package.json tiene esos scripts.
- * @param pm gestor de paquetes
+ * CI steps of a Node project for the given package manager.
+ * Build and test only run if package.json has those scripts.
+ * @param pm package manager
  */
 function nodeCiSteps(pm: PackageManager): string[] {
     const setup: string[] = [];
@@ -329,9 +329,9 @@ function nodeCiSteps(pm: PackageManager): string[] {
 }
 
 /**
- * Pasos de CI para cada tipo de proyecto.
- * @param kind tipo de proyecto
- * @param pm gestor de paquetes (para proyectos Node)
+ * CI steps for each kind of project.
+ * @param kind kind of project
+ * @param pm package manager (for Node projects)
  */
 function ciSteps(kind: CiKind, pm: PackageManager): string[] {
     switch (kind) {
@@ -398,11 +398,11 @@ function ciSteps(kind: CiKind, pm: PackageManager): string[] {
 }
 
 /**
- * Escribe .github/workflows/ci.yml con un job por cada parte del proyecto.
- * GitHub lo ejecuta en cada push y pull request.
- * @param root carpeta raíz
- * @param parts partes a compilar
- * @param pm gestor de paquetes
+ * Writes .github/workflows/ci.yml with one job per part of the project.
+ * GitHub runs it on every push and pull request.
+ * @param root root folder
+ * @param parts parts to build
+ * @param pm package manager
  */
 export function writeGithubActions(root: string, parts: CiPart[], pm: PackageManager): void {
     if (!parts.length) {
@@ -432,9 +432,9 @@ export function writeGithubActions(root: string, parts: CiPart[], pm: PackageMan
     write(path.join(root, '.github', 'workflows', 'ci.yml'), yaml.join('\n'));
 }
 
-// ─── Licencia ───────────────────────────────────────────────────────
+// ─── License ────────────────────────────────────────────────────────
 
-/** Nombre configurado en Git (git config user.name), o un texto genérico. */
+/** Name configured in Git (git config user.name), or a generic text. */
 function gitUserName(): string {
     try {
         const name = cp.execSync('git config user.name', { encoding: 'utf8', windowsHide: true, timeout: 5000 }).trim();
@@ -445,8 +445,8 @@ function gitUserName(): string {
 }
 
 /**
- * Escribe LICENSE con la licencia MIT (permite usar el código casi para cualquier cosa).
- * @param root carpeta raíz
+ * Writes LICENSE with the MIT license (lets anyone use the code for almost anything).
+ * @param root root folder
  */
 export function writeMitLicense(root: string): void {
     const year = new Date().getFullYear();

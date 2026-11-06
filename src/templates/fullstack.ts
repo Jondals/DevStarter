@@ -1,9 +1,9 @@
 /**
  * templates/fullstack.ts
  * ──────────────────────
- * Plantillas full-stack: frameworks con frontend y backend en el mismo proyecto
- * (Next.js, Nuxt, SvelteKit y Astro). También contiene nodeDatabaseSteps(),
- * que conecta una base de datos en cualquier proyecto Node.
+ * Full-stack templates: frameworks with frontend and backend in the same project
+ * (Next.js, Nuxt, SvelteKit and Astro). It also holds nodeDatabaseSteps(),
+ * which connects a database in any Node project.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -14,11 +14,11 @@ import { configureNuxtTailwind } from '../scaffold/tailwind';
 import { cmd, PartOptions, Plan, scaffold, task, Template } from './types';
 
 /**
- * Pasos comunes para conectar una base de datos en un proyecto Node:
- * escribe los ficheros que nos pasen, añade la variable al .env e instala el driver.
- * @param o opciones del proyecto (si no hay base de datos, no hace nada)
- * @param files ficheros a escribir, {ruta relativa: contenido}
- * @param ts el proyecto usa TypeScript (para instalar los tipos)
+ * Shared steps to connect a database in a Node project:
+ * writes the given files, adds the variable to .env and installs the driver.
+ * @param o project options (does nothing without a database)
+ * @param files files to write, {relative path: contents}
+ * @param ts the project uses TypeScript (to install the types)
  */
 export function nodeDatabaseSteps(o: PartOptions, files: Record<string, string>, ts: boolean): Step[] {
     if (!o.database) {
@@ -32,7 +32,7 @@ export function nodeDatabaseSteps(o: PartOptions, files: Record<string, string>,
                 write(path.join(o.dir, file), files[file]);
                 log(file);
             }
-            // Añadimos la conexión al .env (sin borrar lo que ya hubiera).
+            // * Add the connection to .env (without removing what was already there).
             const envFile = path.join(o.dir, '.env');
             const previous = fs.existsSync(envFile) ? fs.readFileSync(envFile, 'utf8') : '';
             if (!previous.includes('DATABASE_')) {
@@ -51,12 +51,12 @@ export function nodeDatabaseSteps(o: PartOptions, files: Record<string, string>,
     return steps;
 }
 
-/** Nota común: dónde está la conexión y cómo probarla. */
+/** Shared note: where the connection lives and how to test it. */
 function databaseNote(o: PartOptions): string[] {
     return o.database ? [`Your ${o.database} connection is in \`.env\`. Test it at \`/api/db\`.`] : [];
 }
 
-/** Pasos de Next.js. */
+/** Next.js steps. */
 function nextPlan(o: PartOptions): Plan {
     const ext = o.typescript ? 'ts' : 'js';
     const route = `
@@ -113,7 +113,7 @@ export async function GET() {
     };
 }
 
-/** Pasos de Nuxt. */
+/** Nuxt steps. */
 function nuxtPlan(o: PartOptions): Plan {
     const steps: Step[] = [
         scaffold(
@@ -167,7 +167,7 @@ export default defineEventHandler(async () => ({ ok: true, result: await checkDa
     };
 }
 
-/** Pasos de SvelteKit. */
+/** SvelteKit steps. */
 function sveltekitPlan(o: PartOptions): Plan {
     const ext = o.typescript ? 'ts' : 'js';
     return {
@@ -189,11 +189,11 @@ function sveltekitPlan(o: PartOptions): Plan {
                 ],
                 o.parentDir,
             ),
-            // Importación relativa (y no $lib/#lib) para que funcione en SvelteKit 2 y 3.
+            // ! Relative import (not $lib/#lib) so it works in both SvelteKit 2 and 3.
             ...nodeDatabaseSteps(
                 o,
                 {
-                    // SvelteKit lee las variables privadas del .env con $env/dynamic/private.
+                    // ? SvelteKit reads private .env variables through $env/dynamic/private.
                     [`src/lib/server/db.${ext}`]: nodeModule(o.database ?? 'SQLite', {
                         ts: o.typescript,
                         env: 'env',
@@ -221,7 +221,7 @@ export async function GET() {
     };
 }
 
-/** Pasos de Astro. */
+/** Astro steps. */
 function astroPlan(o: PartOptions): Plan {
     const steps: Step[] = [
         scaffold(

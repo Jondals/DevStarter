@@ -1,32 +1,33 @@
 /**
  * commands/launch.ts
  * ──────────────────
- * Lo que pasa cuando el proyecto está creado: abrirlo, levantar los servidores de desarrollo
- * (frontend y backend, cada uno en su terminal) y abrir la web en el navegador.
+ * What happens once the project is created: open it, start the dev servers
+ * (frontend and backend, each in its own terminal) and open the app in the browser.
  *
- * Dónde se arrancan los servidores es lo delicado:
- *  - Si ya hay una carpeta abierta, el proyecto se abre en una ventana nueva y los servidores
- *    se arrancan YA, desde esta ventana. Sus terminales siguen vivos y no hace falta que la
- *    ventana nueva tenga DevStarter cargado (en la ventana de F5 no lo tiene).
- *  - Si no hay carpeta abierta, abrir el proyecto recarga esta ventana y los terminales se
- *    perderían, así que los arranca la ventana recargada (resumePendingLaunch).
+ * ! Where the servers are started is the tricky part:
+ *  - If a folder is already open, the project opens in a new window and the servers start
+ *    RIGHT AWAY, from this window. Their terminals stay alive and the new window does not
+ *    need DevStarter loaded (the F5 window does not have it).
+ *  - If no folder is open, opening the project reloads this window and the terminals would
+ *    be lost, so the reloaded window starts them (resumePendingLaunch).
  */
 import * as fs from 'fs';
 import * as net from 'net';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { background } from '../log';
+import { offerScriptsFix, scriptsBlocked, useCmdWrappers } from '../psPolicy';
 import { PENDING_LAUNCH_KEY, PendingLaunch } from '../state';
 import { wait } from '../util';
 
 /**
- * Qué hacer con el proyecto recién creado, según el ajuste devstarter.afterCreate:
- *  - "open" (por defecto): lo abre directamente y levanta los servidores, sin preguntar.
- *  - "ask": muestra un aviso con botones.
- *  - "none": no hace nada.
- * @param context contexto de la extensión
- * @param launch datos para abrir el proyecto
- * @param name nombre del proyecto
+ * What to do with the new project, according to the devstarter.afterCreate setting:
+ *  - "open" (default): opens it directly and starts the servers, without asking.
+ *  - "ask": shows a notification with buttons.
+ *  - "none": does nothing.
+ * @param context extension context
+ * @param launch data to open the project
+ * @param name project name
  */
 export async function afterCreate(
     context: vscode.ExtensionContext,
@@ -40,7 +41,7 @@ export async function afterCreate(
         return;
     }
     if (mode !== 'ask') {
-        // Aviso que no bloquea (sin botones) y apertura directa.
+        // * Non-blocking notification (no buttons) and open it straight away.
         void vscode.window.showInformationMessage(`🎉 ${name} is ready! Opening it and starting the servers…`);
         if (hasWorkspace && config.get('startDevServerOnOpen', true)) {
             await startDevServers(launch);
@@ -67,11 +68,11 @@ export async function afterCreate(
 }
 
 /**
- * Abre la carpeta del proyecto. Si es en esta ventana, se recarga: la ventana nueva (o la
- * recargada) lee PENDING_LAUNCH_KEY en activate() y termina el trabajo.
- * @param context contexto de la extensión
- * @param launch datos para abrir el proyecto
- * @param newWindow abrir en una ventana nueva
+ * Opens the project folder. If it is in this window, the window reloads: the new (or
+ * reloaded) window reads PENDING_LAUNCH_KEY in activate() and finishes the job.
+ * @param context extension context
+ * @param launch data to open the project
+ * @param newWindow open in a new window
  */
 async function openProject(context: vscode.ExtensionContext, launch: PendingLaunch, newWindow: boolean): Promise<void> {
     await context.globalState.update(PENDING_LAUNCH_KEY, launch);
@@ -81,8 +82,8 @@ async function openProject(context: vscode.ExtensionContext, launch: PendingLaun
 }
 
 /**
- * En la ventana recién abierta: abre los ficheros de inicio y, si no se hizo ya, arranca los servidores.
- * @param context contexto de la extensión
+ * In the freshly opened window: opens the starter files and, if not done yet, starts the servers.
+ * @param context extension context
  */
 export async function resumePendingLaunch(context: vscode.ExtensionContext): Promise<void> {
     const launch = context.globalState.get<PendingLaunch>(PENDING_LAUNCH_KEY);
@@ -100,7 +101,7 @@ export async function resumePendingLaunch(context: vscode.ExtensionContext): Pro
         }
     }
     if (!isThisProject) {
-        return; // Es otra ventana; lo dejamos para la del proyecto.
+        return; // ? A different window; leave it to the project's window.
     }
     await context.globalState.update(PENDING_LAUNCH_KEY, undefined);
     await openStarterFiles(launch);
@@ -110,22 +111,22 @@ export async function resumePendingLaunch(context: vscode.ExtensionContext): Pro
 }
 
 /**
- * El PATH actual como variable de entorno para una terminal nueva. En Windows la variable se
- * llama "Path" (no "PATH") y no hay que pasar las dos a la vez, así que se usa el nombre real.
+ * The current PATH as an environment variable for a new terminal. On Windows the variable is
+ * called "Path" (not "PATH") and both must not be passed at once, so the real name is used.
  */
 function pathEnv(): Record<string, string | null> {
     const key = Object.keys(process.env).find(isPathKey) ?? 'PATH';
     return { [key]: process.env[key] ?? null };
 }
 
-/** ¿Es este el nombre de la variable PATH (sin distinguir mayúsculas)? */
+/** Whether this is the name of the PATH variable (case-insensitive). */
 function isPathKey(name: string): boolean {
     return name.toLowerCase() === 'path';
 }
 
 /**
- * Puerto de una dirección ("http://localhost:5173" → 5173), o undefined si no lo lleva.
- * @param url dirección
+ * Port of an address ("http://localhost:5173" → 5173), or undefined if it has none.
+ * @param url address
  */
 function portOf(url: string | undefined): number | undefined {
     if (!url) {
@@ -139,9 +140,9 @@ function portOf(url: string | undefined): number | undefined {
 }
 
 /**
- * ¿Se puede conectar a este puerto de este ordenador? (es decir, ¿hay algo escuchando?)
- * @param host 127.0.0.1 o ::1
- * @param port puerto
+ * Whether we can connect to this port on this computer (i.e. whether something is listening).
+ * @param host 127.0.0.1 or ::1
+ * @param port port
  */
 function canConnect(host: string, port: number): Promise<boolean> {
     return new Promise(function (resolve) {
@@ -161,20 +162,25 @@ function canConnect(host: string, port: number): Promise<boolean> {
 }
 
 /**
- * ¿Hay algún programa escuchando en este puerto (en IPv4 o IPv6)?
- * @param port puerto
+ * Whether any program is listening on this port (over IPv4 or IPv6).
+ * @param port port
  */
 export async function isListening(port: number): Promise<boolean> {
     return (await canConnect('127.0.0.1', port)) || (await canConnect('::1', port));
 }
 
 /**
- * Abre un terminal por servidor (frontend, backend…), lanza su comando y, para el primero,
- * abre la web cuando responda. Si el puerto ya lo usa otro programa, avisa en vez de abrir
- * una web equivocada.
- * @param launch datos del proyecto
+ * Opens one terminal per server (frontend, backend…), runs its command and, for the first one,
+ * opens the app once it responds. If another program already uses the port, it warns instead
+ * of opening the wrong website.
+ * @param launch project data
  */
 export async function startDevServers(launch: PendingLaunch): Promise<void> {
+    // ! Fresh Windows installs block npm.ps1 in PowerShell terminals: use the .cmd wrappers and offer a fix.
+    const blocked = await scriptsBlocked();
+    if (blocked) {
+        background('offering the PowerShell fix', offerScriptsFix());
+    }
     for (let i = 0; i < launch.servers.length; i++) {
         const server = launch.servers[i];
         const port = portOf(server.url);
@@ -187,11 +193,11 @@ export async function startDevServers(launch: PendingLaunch): Promise<void> {
         const terminal = vscode.window.createTerminal({
             name: launch.servers.length > 1 ? server.label : 'Dev server',
             cwd: server.cwd,
-            // PATH actualizado: incluye lo instalado con VS Code abierto (p. ej. PHP para Laravel).
+            // * Updated PATH: includes what was installed while VS Code was open (e.g. PHP for Laravel).
             env: pathEnv(),
             iconPath: new vscode.ThemeIcon(i === 0 ? 'play-circle' : 'server'),
         });
-        terminal.sendText(server.command);
+        terminal.sendText(blocked ? useCmdWrappers(server.command) : server.command);
         if (i === 0) {
             terminal.show();
             if (server.url && !busy) {
@@ -202,17 +208,17 @@ export async function startDevServers(launch: PendingLaunch): Promise<void> {
 }
 
 /**
- * Espera a que el servidor de desarrollo responda y abre la web: en el navegador
- * (por defecto) o dentro de VS Code (Simple Browser), según el ajuste devstarter.openBrowser.
- * Se exporta para poder probarla.
- * @param url dirección del servidor
+ * Waits until the dev server responds and opens the app: in the browser (default)
+ * or inside VS Code (Simple Browser), according to the devstarter.openBrowser setting.
+ * Exported so it can be tested.
+ * @param url server address
  */
 export async function openWhenReady(url: string): Promise<void> {
     const mode = vscode.workspace.getConfiguration('devstarter').get<string>('openBrowser', 'outside');
     if (mode === 'off') {
         return;
     }
-    // Hasta 3 minutos: la primera vez algunos servidores tardan en compilar.
+    // ? Up to 3 minutes: the first time, some servers take a while to compile.
     for (let attempt = 0; attempt < 90; attempt++) {
         try {
             const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
@@ -225,15 +231,15 @@ export async function openWhenReady(url: string): Promise<void> {
                 return;
             }
         } catch {
-            // todavía no responde
+            // not responding yet
         }
         await wait(2000);
     }
 }
 
 /**
- * Abre el fichero principal y, para principiantes, la guía en vista previa.
- * @param launch datos del proyecto
+ * Opens the main file and, for beginners, the guide in preview.
+ * @param launch project data
  */
 async function openStarterFiles(launch: PendingLaunch): Promise<void> {
     if (launch.mainFile) {

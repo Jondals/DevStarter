@@ -1,7 +1,7 @@
 /**
  * commands/updateProject.ts
  * ──────────────────────────
- * Comando "Update Project Libraries": actualiza las librerías del proyecto abierto.
+ * "Update Project Libraries" command: updates the libraries of the open project.
  */
 import * as vscode from 'vscode';
 import * as fs from 'fs';
@@ -10,9 +10,9 @@ import { DevStarterTerminal } from '../terminal';
 import { detectParts, kindNames, updateSteps, UpdateMode } from '../updater';
 import { palette, style, symbols } from '../ui';
 
-// ─── Actualizar el proyecto ─────────────────────────────────────────
+// ─── Updating the project ───────────────────────────────────────────
 
-/** Carpeta del proyecto a actualizar: la del espacio de trabajo o una elegida a mano. */
+/** Folder of the project to update: the workspace one or one picked by hand. */
 async function pickProjectFolder(): Promise<string | undefined> {
     const folders = vscode.workspace.workspaceFolders ?? [];
     if (folders.length === 1) {
@@ -31,10 +31,10 @@ async function pickProjectFolder(): Promise<string | undefined> {
     return picked?.[0]?.fsPath;
 }
 
-/** Comando "Update Project": actualiza las librerías de todas las partes del proyecto. */
+/** "Update Project" command: updates the libraries of every part of the project. */
 export async function updateProject(): Promise<void> {
-    // Instalar paquetes ejecuta los scripts de instalación del proyecto (y de sus dependencias):
-    // en una carpeta no confiable (Restricted Mode) no se hace hasta que la persona la marque como segura.
+    // ! Installing packages runs the install scripts of the project (and its dependencies):
+    // ! in an untrusted folder (Restricted Mode) this waits until the person marks it as safe.
     if (!vscode.workspace.isTrusted) {
         const choice = await vscode.window.showWarningMessage(
             'Updating libraries runs the install scripts of this project, so VS Code first needs you to trust this folder.',

@@ -1,9 +1,9 @@
 /**
  * test/toolupdate.test.ts
  * ───────────────────────
- * Tests de las actualizaciones de herramientas (Node.js, pnpm…): que solo se da por buena una
- * actualización si la versión cambió de verdad, y que se explica por qué cuando no cambia.
- * Usan herramientas "falsas" (comandos de Node que simulan winget, npm…), sin tocar nada del PC.
+ * Tests of the tool updates (Node.js, pnpm…): an update only counts as good if the version
+ * really changed, and the reason is explained when it does not.
+ * They use "fake" tools (Node commands that imitate winget, npm…), touching nothing on the computer.
  */
 import * as assert from 'assert';
 import { DevStarterTerminal } from '../terminal';
@@ -11,16 +11,16 @@ import { updaterFor } from '../tools';
 import { parseShaSums, sha256, toolUpdateStep, UpdateTarget, unchangedReason, wingetCodes } from '../toolupdate';
 import { captureTerminal, restoreWindow } from './helpers';
 
-/** Comando de consola que termina con el código indicado (funciona en cualquier sistema). */
+/** Shell command that exits with the given code (works on any system). */
 function exitWith(code: number): string {
     return `node -e "process.exit(${code})"`;
 }
 
 /**
- * Crea una herramienta falsa: la "versión instalada" va cambiando según la lista `versions`
- * (cada lectura devuelve la siguiente; la última se repite).
- * @param versions versiones que devolverá `detect`, en orden
- * @param overrides cualquier otro dato de la herramienta
+ * Creates a fake tool: the "installed version" changes following the `versions` list
+ * (each read returns the next one; the last one repeats).
+ * @param versions versions `detect` will return, in order
+ * @param overrides any other tool data
  */
 function fakeTool(versions: string[], overrides: Partial<UpdateTarget> = {}): UpdateTarget {
     let reads = 0;
@@ -37,9 +37,9 @@ function fakeTool(versions: string[], overrides: Partial<UpdateTarget> = {}): Up
 }
 
 /**
- * Ejecuta el paso de actualización en un terminal de pruebas.
- * @param target herramienta falsa
- * @returns el resultado y todo lo que se escribió
+ * Runs the update step in a test terminal.
+ * @param target fake tool
+ * @returns the result and everything that was written
  */
 async function runUpdate(target: UpdateTarget): Promise<{ result: string; text: string }> {
     const output = captureTerminal();
@@ -49,7 +49,7 @@ async function runUpdate(target: UpdateTarget): Promise<{ result: string; text: 
 }
 
 suite('DevStarter · tool updates', function () {
-    // captureTerminal sustituye createTerminal: se restaura al terminar cada test.
+    // captureTerminal replaces createTerminal: it is restored after each test.
     teardown(restoreWindow);
 
     test('an update that changes the version is reported as old → new', async function () {
@@ -62,7 +62,7 @@ suite('DevStarter · tool updates', function () {
     test('an update that changes nothing is NOT shown as a success', async function () {
         this.timeout(30000);
         const { text } = await runUpdate(fakeTool(['1.0.0']));
-        // El paso es opcional (no corta el resto), pero tiene que avisar con el motivo y no con un ✔.
+        // ! The step is optional (it does not stop the rest), but it must warn with the reason, not a ✔.
         assert.ok(text.includes('(skipped)'), text);
         assert.ok(text.includes('still 1.0.0'), text);
         assert.ok(text.includes('latest release is 2.0.0'), text);
@@ -80,7 +80,7 @@ suite('DevStarter · tool updates', function () {
     test('a tool not installed with winget says so', function () {
         const reason = unchangedReason(fakeTool(['1.0.0']), wingetCodes.notInstalled);
         assert.ok(reason.includes('was not installed with winget'), reason);
-        // Los códigos de Windows pueden llegar con signo: se normalizan.
+        // Windows codes may arrive signed: they are normalized.
         assert.strictEqual(
             unchangedReason(fakeTool(['1.0.0']), wingetCodes.noUpdate | 0).includes('newest version winget offers'),
             true,
@@ -144,7 +144,7 @@ suite('DevStarter · tool updates', function () {
             return;
         }
         const installer = await updaterFor('python', '3.13.15');
-        // winget puede no estar instalado en la máquina de pruebas.
+        // winget may not be installed on the test machine.
         if (installer) {
             assert.ok(installer.command.includes('--id Python.Python.3.13 '), installer.command);
             assert.ok(!installer.command.includes('install'), 'must never reinstall over an existing install');

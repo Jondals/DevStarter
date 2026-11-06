@@ -1,13 +1,13 @@
 /**
  * templates/backend.ts
  * ────────────────────
- * Plantillas de backend: Express, NestJS, FastAPI, Flask, Django, Laravel, Go,
- * .NET, Rust (Axum) y Spring Boot.
+ * Backend templates: Express, NestJS, FastAPI, Flask, Django, Laravel, Go,
+ * .NET, Rust (Axum) and Spring Boot.
  *
- * Todas exponen GET /api/health para que un frontend pueda comprobar que el backend
- * responde, y las que admiten base de datos añaden GET /api/db.
- * El código dentro de las plantillas de texto (`...`) es el que se escribe en el
- * proyecto del usuario, con el estilo habitual de cada lenguaje.
+ * They all expose GET /api/health so a frontend can check that the backend
+ * responds, and the ones that support a database also add GET /api/db.
+ * ? The code inside the text templates (`...`) is what gets written into the user's
+ * project, in the usual style of each language.
  */
 import * as cp from 'child_process';
 import * as fs from 'fs';
@@ -36,17 +36,17 @@ const pythonGitignore = '.venv/\n__pycache__/\n*.pyc\n.env\ndb.sqlite3\ndata.db\
 const pythonExt = ['ms-python.python'];
 
 /**
- * Nota común: dónde está la conexión a la base de datos y cómo probarla.
- * @param o opciones del proyecto
+ * Shared note: where the database connection lives and how to test it.
+ * @param o project options
  */
 function databaseNote(o: PartOptions): string[] {
     return o.database ? [`Your ${o.database} connection is in \`.env\`. Test it at \`/api/db\`.`] : [];
 }
 
 /**
- * Paso que escribe el Dockerfile, solo si se pidió.
- * @param o opciones del proyecto
- * @param content contenido del Dockerfile
+ * Step that writes the Dockerfile, only if it was requested.
+ * @param o project options
+ * @param content contents of the Dockerfile
  */
 function dockerStep(o: PartOptions, content: string): Step[] {
     if (!o.dockerfile) {
@@ -62,8 +62,8 @@ function dockerStep(o: PartOptions, content: string): Step[] {
 // ─── Express ────────────────────────────────────────────────────────
 
 /**
- * Escribe los ficheros de la API de Express: package.json, .env, src/index.js y src/db.js.
- * @param o opciones del proyecto
+ * Writes the Express API files: package.json, .env, src/index.js and src/db.js.
+ * @param o project options
  */
 function writeExpressProject(o: PartOptions): void {
     const db = o.database;
@@ -73,7 +73,7 @@ function writeExpressProject(o: PartOptions): void {
         private: true,
         type: 'module',
         scripts: {
-            // --watch reinicia el servidor al guardar; --env-file carga las variables del .env.
+            // ? --watch restarts the server on save; --env-file loads the variables from .env.
             dev: 'node --watch --env-file=.env src/index.js',
             start: 'node --env-file=.env src/index.js',
         },
@@ -148,7 +148,7 @@ app.listen(PORT, () => {
     );
 }
 
-/** Pasos de Express. */
+/** Express steps. */
 function expressPlan(o: PartOptions): Plan {
     const deps = ['express', 'cors', ...(o.database ? nodePackages(o.database, false).deps : [])];
     return {
@@ -174,13 +174,13 @@ function expressPlan(o: PartOptions): Plan {
 // ─── NestJS ─────────────────────────────────────────────────────────
 
 /**
- * Añade un controlador /api (health y, si hay base de datos, db) y lo registra en AppModule.
- * @param o opciones del proyecto
+ * Adds an /api controller (health and, with a database, db) and registers it in AppModule.
+ * @param o project options
  */
 function writeNestApiController(o: PartOptions): void {
     const modulePath = path.join(o.dir, 'src', 'app.module.ts');
     let module = fs.readFileSync(modulePath, 'utf8');
-    // Las versiones nuevas de Nest usan ESM e importan con extensión ".js".
+    // ! Newer Nest versions use ESM and import with a ".js" extension.
     const suffix = module.includes("app.controller.js'") ? '.js' : '';
     const db = o.database;
     if (db) {
@@ -188,7 +188,7 @@ function writeNestApiController(o: PartOptions): void {
             path.join(o.dir, 'src', 'db.ts'),
             nodeModule(db, {
                 ts: true,
-                // Nest no lee el .env por sí mismo; Node puede cargarlo con loadEnvFile().
+                // ? Nest does not read .env by itself; Node can load it with loadEnvFile().
                 header: 'try {\n  process.loadEnvFile()\n} catch {\n  // No .env file: use the real environment variables.\n}\n',
             }),
         );
@@ -217,7 +217,7 @@ ${
 `,
     );
     if (!module.includes('ApiController')) {
-        // Insertamos el import detrás del último import y añadimos el controlador a la lista.
+        // * Insert the import after the last import and add the controller to the list.
         module = module.replace(
             /(import [^\n]+\n)(?![\s\S]*import )/,
             `$1import { ApiController } from './api.controller${suffix}';\n`,
@@ -227,9 +227,9 @@ ${
     }
 }
 
-/** Pasos de NestJS. */
+/** NestJS steps. */
 function nestPlan(o: PartOptions): Plan {
-    // El CLI de Nest no admite bun como gestor; en ese caso instala con npm.
+    // ! The Nest CLI does not support bun as a package manager; in that case it installs with npm.
     const nestPm = o.pm.id === 'bun' ? 'npm' : o.pm.id;
     return {
         steps: [
@@ -256,11 +256,11 @@ function nestPlan(o: PartOptions): Plan {
     };
 }
 
-// ─── Python: FastAPI y Flask ────────────────────────────────────────
+// ─── Python: FastAPI and Flask ──────────────────────────────────────
 
 /**
- * Ficheros comunes de los backends Python: .gitignore y, si hay base de datos, db.py y .env.
- * @param o opciones del proyecto
+ * Shared files of the Python backends: .gitignore and, with a database, db.py and .env.
+ * @param o project options
  */
 function writePythonBase(o: PartOptions): void {
     write(path.join(o.dir, '.gitignore'), pythonGitignore);
@@ -271,8 +271,8 @@ function writePythonBase(o: PartOptions): void {
 }
 
 /**
- * Escribe main.py de FastAPI (y db.py + .env si hay base de datos).
- * @param o opciones del proyecto
+ * Writes FastAPI's main.py (plus db.py + .env with a database).
+ * @param o project options
  */
 function writeFastApiProject(o: PartOptions): void {
     writePythonBase(o);
@@ -326,8 +326,8 @@ def create_todo(todo: Todo) -> Todo:
 }
 
 /**
- * Escribe app.py de Flask (y db.py + .env si hay base de datos).
- * @param o opciones del proyecto
+ * Writes Flask's app.py (plus db.py + .env with a database).
+ * @param o project options
  */
 function writeFlaskProject(o: PartOptions): void {
     writePythonBase(o);
@@ -378,9 +378,9 @@ def create_todo():
 }
 
 /**
- * Pasos comunes de Python: entorno virtual (.venv), instalar paquetes y guardar requirements.txt.
- * @param o opciones del proyecto
- * @param packages paquetes de pip
+ * Shared Python steps: virtual environment (.venv), install packages and save requirements.txt.
+ * @param o project options
+ * @param packages pip packages
  */
 function pythonSteps(o: PartOptions, packages: string[]): Step[] {
     const first = packages[0].replace(/\[.*\]/, '');
@@ -391,7 +391,7 @@ function pythonSteps(o: PartOptions, packages: string[]): Step[] {
     ];
 }
 
-/** Pasos de FastAPI. */
+/** FastAPI steps. */
 function fastapiPlan(o: PartOptions): Plan {
     return {
         steps: [
@@ -412,7 +412,7 @@ function fastapiPlan(o: PartOptions): Plan {
     };
 }
 
-/** Pasos de Flask. */
+/** Flask steps. */
 function flaskPlan(o: PartOptions): Plan {
     return {
         steps: [
@@ -429,7 +429,7 @@ function flaskPlan(o: PartOptions): Plan {
                 }),
             ),
         ],
-        // Puerto 5001: en macOS el 5000 lo usa AirPlay.
+        // ! Port 5001: on macOS port 5000 is taken by AirPlay.
         server: { command: `${venvPython()} -m flask --app app run --debug --port 5001`, url: 'http://localhost:5001' },
         mainFiles: ['app.py'],
         notes: ['`--debug` reloads the server when you save and shows helpful error pages.', ...databaseNote(o)],
@@ -439,9 +439,9 @@ function flaskPlan(o: PartOptions): Plan {
 // ─── Django ─────────────────────────────────────────────────────────
 
 /**
- * Añade /api/health a config/urls.py y configura la base de datos.
- * @param o opciones del proyecto
- * @param log función para contar lo que se hace
+ * Adds /api/health to config/urls.py and configures the database.
+ * @param o project options
+ * @param log function to report what is being done
  */
 function configureDjango(o: PartOptions, log: (m: string) => void): void {
     const db = o.database ?? 'SQLite';
@@ -460,7 +460,7 @@ function configureDjango(o: PartOptions, log: (m: string) => void): void {
     log(db === 'SQLite' ? 'Using SQLite (db.sqlite3)' : `DATABASE_URL in .env (${db})`);
 }
 
-/** Pasos de Django. */
+/** Django steps. */
 function djangoPlan(o: PartOptions): Plan {
     const db = o.database ?? 'SQLite';
     const steps: Step[] = [
@@ -475,7 +475,7 @@ function djangoPlan(o: PartOptions): Plan {
             configureDjango(o, log);
         }),
     ];
-    // Con SQLite podemos crear las tablas ya; con un servidor, cuando esté en marcha.
+    // ? With SQLite the tables can be created now; with a server, once it is running.
     if (db === 'SQLite') {
         steps.push(cmd('Setting up the database', `${venvPython()} manage.py migrate`, o.dir));
     }
@@ -500,7 +500,7 @@ function djangoPlan(o: PartOptions): Plan {
 
 // ─── Laravel ────────────────────────────────────────────────────────
 
-/** Pasos de Laravel. */
+/** Laravel steps. */
 function laravelPlan(o: PartOptions): Plan {
     const notes = [
         'Routes live in `routes/web.php`, views in `resources/views`.',
@@ -533,11 +533,11 @@ function laravelPlan(o: PartOptions): Plan {
     };
 }
 
-// ─── Go, Rust, .NET y Spring Boot ───────────────────────────────────
+// ─── Go, Rust, .NET and Spring Boot ─────────────────────────────────
 
 /**
- * Escribe go.mod y main.go (solo librería estándar).
- * @param o opciones del proyecto
+ * Writes go.mod and main.go (standard library only).
+ * @param o project options
  */
 function writeGoProject(o: PartOptions): void {
     write(path.join(o.dir, 'go.mod'), `module ${o.packageName}\n\ngo 1.22\n`);
@@ -578,7 +578,7 @@ func main() {
     );
 }
 
-/** Pasos de Go. */
+/** Go steps. */
 function goPlan(o: PartOptions): Plan {
     return {
         steps: [
@@ -595,7 +595,7 @@ function goPlan(o: PartOptions): Plan {
     };
 }
 
-/** Pasos de .NET Web API. */
+/** .NET Web API steps. */
 function dotnetPlan(o: PartOptions): Plan {
     return {
         steps: [
@@ -619,8 +619,8 @@ function dotnetPlan(o: PartOptions): Plan {
 }
 
 /**
- * Escribe Cargo.toml y src/main.rs con un servidor Axum.
- * @param o opciones del proyecto
+ * Writes Cargo.toml and src/main.rs with an Axum server.
+ * @param o project options
  */
 function writeRustProject(o: PartOptions): void {
     write(
@@ -666,7 +666,7 @@ async fn main() {
     );
 }
 
-/** Pasos de Rust (Axum). */
+/** Rust (Axum) steps. */
 function rustPlan(o: PartOptions): Plan {
     return {
         steps: [
@@ -684,8 +684,8 @@ function rustPlan(o: PartOptions): Plan {
 }
 
 /**
- * Nombre válido como paquete de Java: solo letras y números, en minúscula.
- * @param name nombre del proyecto
+ * Name that is valid as a Java package: lowercase letters and digits only.
+ * @param name project name
  */
 function javaPackageName(name: string): string {
     const clean = name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -693,10 +693,10 @@ function javaPackageName(name: string): string {
 }
 
 /**
- * Descarga el proyecto de start.spring.io y lo guarda como .zip.
- * @param zip ruta donde guardar el zip
- * @param pkg nombre del paquete Java
- * @param dependencies dependencias de Spring Initializr
+ * Downloads the project from start.spring.io and saves it as a .zip.
+ * @param zip path to save the zip to
+ * @param pkg Java package name
+ * @param dependencies Spring Initializr dependencies
  */
 async function downloadSpringProject(zip: string, pkg: string, dependencies: string[]): Promise<void> {
     const params = new URLSearchParams({
@@ -709,16 +709,16 @@ async function downloadSpringProject(zip: string, pkg: string, dependencies: str
         name: pkg,
         packageName: `com.example.${pkg}`,
     });
-    // Un proyecto de Spring pesa menos de 1 MB: se aceptan hasta 20 MB como máximo.
+    // ! A Spring project weighs less than 1 MB: accept 20 MB at most.
     const url = `https://start.spring.io/starter.zip?${params}`;
     fs.writeFileSync(zip, await fetchBuffer(url, { timeoutMs: 60000, maxBytes: 20 * 1024 * 1024 }));
 }
 
 /**
- * Descomprime un .zip SIN pasar por la consola, así que ninguna ruta se interpreta como comando.
- * Windows trae un tar.exe que sabe abrir .zip; en macOS y Linux se usa unzip.
- * @param zip fichero .zip
- * @param dest carpeta donde descomprimir (debe existir)
+ * Unzips a .zip WITHOUT going through a shell, so no path can be interpreted as a command.
+ * Windows ships a tar.exe that can open .zip files; on macOS and Linux unzip is used.
+ * @param zip .zip file
+ * @param dest folder to unzip into (must exist)
  */
 function extractZip(zip: string, dest: string): void {
     if (isWindows) {
@@ -729,11 +729,11 @@ function extractZip(zip: string, dest: string): void {
     }
 }
 
-/** Pasos de Spring Boot. */
+/** Spring Boot steps. */
 function springPlan(o: PartOptions): Plan {
     const pkg = javaPackageName(o.packageName);
     const zip = path.join(o.parentDir, `${o.folder}.zip`);
-    // Librerías elegidas con prefijo "spring-" → dependencias de Spring Initializr.
+    // * Libraries with the "spring-" prefix → Spring Initializr dependencies.
     const dependencies = ['web', 'devtools'];
     for (const id of o.libraries) {
         if (id.startsWith('spring-')) {
@@ -789,7 +789,7 @@ public class HelloController {
     };
 }
 
-// ─── Catálogo ───────────────────────────────────────────────────────
+// ─── Catalog ────────────────────────────────────────────────────────
 
 export const backendTemplates: Template[] = [
     {

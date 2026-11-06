@@ -1,8 +1,8 @@
 /**
  * scaffold/tailwind.ts
  * ────────────────────
- * Configuración de Tailwind CSS v4 (Vite, Angular y Nuxt) y del "proxy" que hace
- * que las peticiones del frontend a /api lleguen al backend durante el desarrollo.
+ * Setup of Tailwind CSS v4 (Vite, Angular and Nuxt) and of the "proxy" that sends
+ * the frontend's requests to /api to the backend during development.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -11,14 +11,14 @@ import { firstExisting, write } from './files';
 const viteConfigs = ['vite.config.ts', 'vite.config.js', 'vite.config.mjs'];
 
 /**
- * Añade el plugin @tailwindcss/vite a vite.config y cambia la hoja de estilos principal por Tailwind.
- * @param dir carpeta del proyecto
- * @param cssFile hoja de estilos principal (relativa a `dir`)
+ * Adds the @tailwindcss/vite plugin to vite.config and replaces the main stylesheet with Tailwind.
+ * @param dir project folder
+ * @param cssFile main stylesheet (relative to `dir`)
  */
 export function configureViteTailwind(dir: string, cssFile: string): void {
     const config = firstExisting(dir, viteConfigs);
     if (!config) {
-        // La plantilla "vanilla" no trae vite.config, así que lo creamos.
+        // ? The "vanilla" template has no vite.config, so we create it.
         write(
             path.join(dir, 'vite.config.js'),
             `
@@ -45,10 +45,10 @@ export default defineConfig({
 }
 
 /**
- * Hace que las peticiones a /api del frontend lleguen al backend durante el desarrollo.
- * Así el frontend puede hacer fetch('/api/todos') sin preocuparse de puertos ni de CORS.
- * @param dir carpeta del frontend
- * @param backendUrl URL del backend (p. ej. http://localhost:3000)
+ * Sends the frontend's requests to /api to the backend during development.
+ * That way the frontend can call fetch('/api/todos') without worrying about ports or CORS.
+ * @param dir frontend folder
+ * @param backendUrl backend URL (e.g. http://localhost:3000)
  */
 export function configureViteProxy(dir: string, backendUrl: string): void {
     const proxy = `server: {\n    proxy: {\n      '/api': '${backendUrl}',\n    },\n  },\n  `;
@@ -68,14 +68,14 @@ export default defineConfig({
     }
     const source = fs.readFileSync(config, 'utf8');
     if (!source.includes('proxy')) {
-        // "$&" en replace() significa "lo que se ha encontrado", así insertamos justo detrás.
+        // ? "$&" in replace() means "the matched text", so we insert right after it.
         fs.writeFileSync(config, source.replace(/defineConfig\(\{\s*/, `$&${proxy}`));
     }
 }
 
 /**
- * Angular usa PostCSS para Tailwind v4.
- * @param dir carpeta del proyecto Angular
+ * Angular uses PostCSS for Tailwind v4.
+ * @param dir Angular project folder
  */
 export function configureAngularTailwind(dir: string): void {
     write(
@@ -90,9 +90,9 @@ export function configureAngularTailwind(dir: string): void {
 }
 
 /**
- * Angular: proxy de /api al backend con proxy.conf.json.
- * @param dir carpeta del proyecto Angular
- * @param backendUrl URL del backend
+ * Angular: proxy /api to the backend with proxy.conf.json.
+ * @param dir Angular project folder
+ * @param backendUrl backend URL
  */
 export function configureAngularProxy(dir: string, backendUrl: string): void {
     write(
@@ -114,8 +114,8 @@ export function configureAngularProxy(dir: string, backendUrl: string): void {
 }
 
 /**
- * Nuxt 4: plugin de Vite + hoja de estilos en app/assets/css/main.css.
- * @param dir carpeta del proyecto Nuxt
+ * Nuxt 4: Vite plugin + stylesheet in app/assets/css/main.css.
+ * @param dir Nuxt project folder
  */
 export function configureNuxtTailwind(dir: string): void {
     const config = path.join(dir, 'nuxt.config.ts');

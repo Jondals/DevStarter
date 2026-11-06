@@ -1,8 +1,8 @@
 /**
  * templates/types.ts
  * ──────────────────
- * Tipos compartidos por todas las plantillas (qué es una plantilla, qué recibe
- * y qué devuelve) y pequeñas funciones para crear pasos del terminal.
+ * Types shared by every template (what a template is, what it receives
+ * and what it returns) and small helpers to build terminal steps.
  */
 import * as fs from 'fs';
 import { CommandStep, Logger, Step } from '../terminal';
@@ -13,90 +13,90 @@ import { CiKind } from '../scaffold/extras';
 
 export type Category = 'Frontend' | 'Full-stack' | 'Backend' | 'Mobile' | 'Other';
 
-/** Todo lo que una plantilla necesita saber para crear su parte del proyecto. */
+/** Everything a template needs to know to create its part of the project. */
 export interface PartOptions {
-    /** Nombre del proyecto tal y como lo escribió la persona. */
+    /** Project name exactly as the person typed it. */
     name: string;
-    /** Nombre para package.json, Cargo.toml… (en full-stack: "nombre-backend"). */
+    /** Name for package.json, Cargo.toml… (full-stack: "name-backend"). */
     packageName: string;
-    /** Carpeta donde se crea la parte. */
+    /** Folder where the part is created. */
     parentDir: string;
-    /** Nombre de la carpeta de la parte (el nombre del proyecto, o "frontend" / "backend"). */
+    /** Name of the part's folder (the project name, or "frontend" / "backend"). */
     folder: string;
-    /** Ruta completa: parentDir/folder. */
+    /** Full path: parentDir/folder. */
     dir: string;
     typescript: boolean;
     tailwind: boolean;
     database?: Database;
     pm: PackageManager;
-    /** Comando de Python del sistema (python / py / python3). */
+    /** System Python command (python / py / python3). */
     python?: string;
     beginner: boolean;
-    /** Si es un frontend con backend, URL del backend para redirigir /api. */
+    /** For a frontend with a backend: backend URL to forward /api to. */
     backendUrl?: string;
-    /** Generar Dockerfile (solo backends). */
+    /** Generate a Dockerfile (backends only). */
     dockerfile: boolean;
-    /** Identificadores de las librerías elegidas para esta parte. */
+    /** Ids of the libraries chosen for this part. */
     libraries: string[];
 }
 
-/** Lo que devuelve una plantilla: los pasos a ejecutar y cómo arrancarla después. */
+/** What a template returns: the steps to run and how to start it afterwards. */
 export interface Plan {
     steps: Step[];
-    /** Comando para arrancar el servidor de desarrollo, si lo hay. */
+    /** Command that starts the dev server, if there is one. */
     server?: { command: string; url?: string };
-    /** Fichero principal a abrir (relativo a la parte); gana el primero que exista. */
+    /** Main file to open (relative to the part); the first one that exists wins. */
     mainFiles: string[];
-    /** Consejos que acaban en GETTING_STARTED.md. */
+    /** Tips that end up in GETTING_STARTED.md. */
     notes: string[];
 }
 
-/** Una plantilla de proyecto. */
+/** A project template. */
 export interface Template {
     id: string;
     label: string;
-    /** Icono de VS Code (codicon) para el selector. */
+    /** VS Code icon (codicon) for the picker. */
     icon: string;
     category: Category;
-    /** Texto corto al lado del nombre. */
+    /** Short text next to the name. */
     description: string;
-    /** Explicación para principiantes. */
+    /** Explanation for beginners. */
     detail: string;
     recommended?: boolean;
-    /** Ofrece elegir entre TypeScript y JavaScript. */
+    /** Offers a choice between TypeScript and JavaScript. */
     languages?: boolean;
     tailwind?: boolean;
-    /** Bases de datos que sabe integrar. */
+    /** Databases it knows how to integrate. */
     databases?: Database[];
-    /** Si es un backend que se puede añadir a un frontend: puerto en el que escucha. */
+    /** For a backend that can be added to a frontend: the port it listens on. */
     port?: number;
-    /** Frontends y apps móviles a los que se puede añadir un backend. */
+    /** Frontends and mobile apps that can get a backend. */
     acceptsBackend?: boolean;
-    /** Sabe generar un Dockerfile. */
+    /** Can generate a Dockerfile. */
     docker?: boolean;
-    /** Tipo de proyecto para GitHub Actions. */
+    /** Kind of project for GitHub Actions. */
     ci?: CiKind;
-    /** Usa npm / pnpm / bun. */
+    /** Uses npm / pnpm / bun. */
     node: boolean;
     requires: ToolId[];
     nameStyle: 'kebab' | 'snake';
     docs: string;
-    /** Extensiones de VS Code recomendadas para este stack. */
+    /** Recommended VS Code extensions for this stack. */
     vscode: string[];
-    /** Construye los pasos para crear esta parte del proyecto. */
+    /** Builds the steps that create this part of the project. */
     plan(o: PartOptions): Plan;
 }
 
 export const isWindows = process.platform === 'win32';
 
-/** Python dentro del entorno virtual del proyecto (ruta relativa a la carpeta del proyecto). */
+/** Python inside the project's virtual environment (path relative to the project folder). */
 export function venvPython(): string {
     return isWindows ? '.venv\\Scripts\\python' : '.venv/bin/python';
 }
 
 /**
- * Comando pip install con cada paquete entre comillas (por los corchetes de "psycopg[binary]").
- * @param packages paquetes a instalar
+ * pip install command with every package quoted (because of the brackets in "psycopg[binary]").
+ * @param packages packages to install
  */
 export function pipInstall(packages: string[]): string {
     const quoted: string[] = [];
@@ -107,29 +107,29 @@ export function pipInstall(packages: string[]): string {
 }
 
 /**
- * Crea un paso que ejecuta un comando.
- * @param title texto que se muestra
- * @param command comando de consola
- * @param cwd carpeta donde se ejecuta
- * @param optional si falla, solo avisa
+ * Creates a step that runs a command.
+ * @param title text shown
+ * @param command shell command
+ * @param cwd folder it runs in
+ * @param optional if it fails, only warn
  */
 export function cmd(title: string, command: string, cwd: string, optional = false): Step {
     return { kind: 'command', title, command, cwd, optional };
 }
 
 /**
- * Crea un paso que ejecuta código de la extensión.
- * @param title texto que se muestra
- * @param run función a ejecutar (recibe `log` para contar lo que hace)
- * @param optional si falla, solo avisa
+ * Creates a step that runs extension code.
+ * @param title text shown
+ * @param run function to run (gets `log` to report what it does)
+ * @param optional if it fails, only warn
  */
 export function task(title: string, run: (log: Logger) => void | Promise<void>, optional = false): Step {
     return { kind: 'task', title, run, optional };
 }
 
 /**
- * Paso que crea la carpeta del proyecto.
- * @param dir carpeta a crear
+ * Step that creates the project folder.
+ * @param dir folder to create
  */
 export function makeDir(dir: string): Step {
     return task('Creating project folder', function () {
@@ -138,17 +138,17 @@ export function makeDir(dir: string): Step {
 }
 
 /**
- * Paso que ejecuta un generador de proyectos publicado en npm (create-vite, @angular/cli…).
- * Usa la versión fijada en los ajustes (o "latest") y guarda cómo repetir el comando con
- * otra versión, para poder reintentarlo con una compatible si la última pide un Node más nuevo.
- * @param o opciones del proyecto (para el gestor de paquetes)
- * @param title texto que se muestra
- * @param pkg paquete de npm del generador
- * @param args argumentos del generador
- * @param cwd carpeta donde se ejecuta
+ * Step that runs a project generator published on npm (create-vite, @angular/cli…).
+ * Uses the version pinned in the settings (or "latest") and remembers how to repeat the command
+ * with another version, so it can be retried with a compatible one if the latest needs a newer Node.
+ * @param o project options (for the package manager)
+ * @param title text shown
+ * @param pkg npm package of the generator
+ * @param args generator arguments
+ * @param cwd folder it runs in
  */
 export function scaffold(o: PartOptions, title: string, pkg: string, args: string[], cwd: string): CommandStep {
-    /** Comando completo con una versión concreta del generador, más el arreglo de pnpm. */
+    /** Full command with a specific generator version, plus the pnpm fix. */
     function withVersion(version: string): string {
         return o.pm.exec(`${pkg}@${version}`, args) + pinPnpmCommand(o);
     }
@@ -162,19 +162,19 @@ export function scaffold(o: PartOptions, title: string, pkg: string, args: strin
 }
 
 /**
- * Algunos generadores (Angular, Nuxt…) escriben en el package.json un campo
- * "packageManager": "pnpm@<la última versión>". Si no coincide con el pnpm instalado, pnpm
- * intenta descargar y cambiar a esa versión cada vez que se usa en la carpeta, y en Windows
- * eso falla ("El sistema no puede encontrar la ruta especificada").
- * Devuelve un comando (para encadenar con &&) que fija el campo al pnpm instalado.
- * @param o opciones del proyecto
- * @returns "" si no hace falta (otro gestor, o versión desconocida)
+ * ! Some generators (Angular, Nuxt…) write a "packageManager": "pnpm@<latest version>" field
+ * into package.json. If it does not match the installed pnpm, pnpm tries to download and
+ * switch to that version every time it is used in the folder, and on Windows that fails
+ * ("The system cannot find the path specified").
+ * Returns a command (to chain with &&) that pins the field to the installed pnpm.
+ * @param o project options
+ * @returns "" if not needed (another package manager, or unknown version)
  */
 export function pinPnpmCommand(o: PartOptions): string {
     if (o.pm.id !== 'pnpm' || !o.pm.version || !/^\d+\.\d+\.\d+$/.test(o.pm.version)) {
         return '';
     }
-    // Script de Node en una sola línea (sin comillas dobles: el comando va entre comillas dobles).
+    // ? One-line Node script (no double quotes: the command itself is wrapped in double quotes).
     const script =
         "const fs=require('fs'),path=require('path');" +
         "const f=path.join(process.cwd(),process.argv[1],'package.json');" +

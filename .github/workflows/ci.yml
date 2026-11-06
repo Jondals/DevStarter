@@ -1,4 +1,4 @@
-# CI de DevStarter: tipos, lint, formato y tests en cada push y pull request.
+# DevStarter CI: types, lint, formatting and tests on every push and pull request.
 name: CI
 
 on:
@@ -23,7 +23,7 @@ jobs:
       - run: pnpm check-types
       - run: pnpm lint
       - run: pnpm format:check
-      # Los tests abren VS Code: en Linux necesitan una pantalla virtual (xvfb).
+      # ! The tests open VS Code: on Linux they need a virtual display (xvfb).
       - name: Test (Linux)
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm test
@@ -31,8 +31,8 @@ jobs:
         if: runner.os == 'Windows'
         run: pnpm test
 
-  # Los mismos tests en la version MINIMA de VS Code que declara el manifiesto (engines.vscode):
-  # asi se garantiza que la extension instala y funciona en los IDEs derivados mas antiguos.
+  # * The same tests on the MINIMUM VS Code version declared in the manifest (engines.vscode),
+  # * so the extension is proven to install and work on the oldest derived IDEs too.
   test-minimum-vscode:
     runs-on: ubuntu-latest
     steps:
