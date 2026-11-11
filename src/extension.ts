@@ -12,6 +12,7 @@
  *   recent        · recent projects
  *   misc          · welcome message, experience level, guide and help
  */
+import { publishFolderCommand } from './github';
 import * as vscode from 'vscode';
 import { background, log, safeCommand } from './log';
 import { PendingLaunch, RecentProject, setExtensionContext, syncTerminalPath } from './state';
@@ -66,6 +67,10 @@ export function activate(context: vscode.ExtensionContext): DevStarterApi {
             safeCommand('changing the experience level', changeExperience),
         ),
         vscode.commands.registerCommand('devstarter.help', safeCommand('opening help', showHelp)),
+        vscode.commands.registerCommand(
+            'devstarter.publishToGithub',
+            safeCommand('publishing to GitHub', publishFolderCommand),
+        ),
     );
 
     createStatusBarButton(context);

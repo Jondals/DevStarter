@@ -18,6 +18,7 @@ import { PendingLaunch } from '../state';
 import { checkProjectTools, planInstalls, recoverFromFailure } from './install';
 import { afterCreate } from './launch';
 import { rememberProject } from './recent';
+import { GithubTarget, prepareGithub } from '../github';
 
 /** Prevents creating two projects at the same time. */
 let running = false;
@@ -99,6 +100,29 @@ async function createProject(context: vscode.ExtensionContext, choice: ProjectCh
         ),
     );
     await term.typewriter(choice.beginner ? "Sit back. I'll take care of everything." : 'Scaffolding your project…');
+
+    // ── GitHub: sign in (and pick the repository) before anything runs, so nothing interrupts later.
+    if (!choice.github && (choice.extras.includes('publish') || choice.extras.includes('existing'))) {
+        const mode = choice.extras.includes('existing') ? 'existing' : 'new';
+        let target: GithubTarget | undefined;
+        try {
+            target = await prepareGithub(mode, choice.name);
+        } catch (err) {
+            term.result(palette.amber, `GitHub: ${err instanceof Error ? err.message : String(err)}`, [], symbols.warn);
+        }
+        if (target) {
+            choice = { ...choice, github: target };
+            const where = target.existing ? target.existing.fullName : `${target.login}/${choice.name}`;
+            term.result(palette.green, `GitHub ${style.gray('→ ' + where)}`);
+        } else {
+            term.result(
+                palette.amber,
+                'Not signed in to GitHub: the project stays on your computer only.',
+                [],
+                symbols.warn,
+            );
+        }
+    }
 
     // ── Tools
     term.section('Checking your tools');

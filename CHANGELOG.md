@@ -1,5 +1,33 @@
 # Change Log
-## [Unreleased]
+## [1.1.0] - 2026-11-11
+
+### Much simpler for beginners
+- **Beginner and Experienced now really differ.** Beginners see 8 ideas and the 6 most used technologies, with a **See all** button for the rest. On the next screen they only choose a **name and a folder**; language, backend, database, libraries and extras are folded into **Customize (optional)** with good defaults already picked. Experienced users get the full catalog and every option on one screen.
+- **Technology logos everywhere:** every template, idea, library, database, package manager and extra shows its real logo in its brand color (Simple Icons, CC0). The original DevStarter logo is back in the wizard.
+- New look: neutral surfaces that follow your VS Code theme, one accent color, 8–11 px corners, and no more "Vite" repeated under every frontend.
+
+### Many more technologies, sorted by popularity
+- **34 templates** (was 24), listed from most to least used in each category: Solid, Preact and Lit (Vite), React Router (formerly Remix), Fastify, Hono, **Electron**, **Tauri**, **browser extensions (WXT)** and a **Discord bot**. New **Desktop** category.
+- **20 ideas** (was 11): online store, AI chatbot, dashboard with charts, real-time chat, desktop app, browser extension, Discord bot, data analysis and an API for your app.
+- **93 libraries** (was 54): Redux Toolkit, Recharts, Sonner, Lucide, TanStack Table, i18next, date-fns, Lodash, Socket.IO, Prisma, Stripe, Nodemailer, Pino, the **Claude, OpenAI and Vercel AI SDKs**, SQLAlchemy, NumPy, Matplotlib, scikit-learn, Beautiful Soup, Pillow, Riverpod and more.
+
+### GitHub in one click
+- **Upload to GitHub** no longer needs the GitHub CLI: DevStarter signs in with the GitHub account built into VS Code (one "Allow"), creates the repository (private or public) and pushes. The token stays in memory and never touches the command line or `.git/config`.
+- **Add to one of my GitHub repositories:** pick an existing repository from a list; the project is merged on top of what it has (its history is kept) and pushed.
+- New command **DevStarter: Publish This Folder to GitHub** for projects you already have, made with DevStarter or not.
+- If Git does not know your name yet, commits use your GitHub account (only in that repository).
+
+### AI agents
+- New extra **AI agent ready** (on by default): writes `AGENTS.md` (stack, real commands, folder map, where new code goes, rules) plus `CLAUDE.md`, `GEMINI.md`, Copilot instructions and the reusable prompts `/new-feature`, `/review` and `/explain` for Claude Code and Copilot Chat.
+
+### Tools that install themselves, even without winget
+- On Windows without winget (LTSC, Server, some Windows 10), missing tools are downloaded from their official source into your user folder, with no admin rights: GitHub CLI, Git, Node.js, Python, Go, Java, .NET and Rust.
+
+### Fixes
+- Opening the new project while debugging DevStarter no longer crashes the Extension Development Host.
+- Electron Forge 8 renamed its TypeScript template; DevStarter uses the new flags.
+- Dependabot no longer proposes `@types/vscode`, `@types/node` or TypeScript major updates that break the build (they must match the minimum VS Code).
+
 
 ### A visual New Project wizard
 - **New Project now opens a full page** instead of a chain of lists: cards for every idea and technology with live search and category filters, then one screen where everything is editable (language, backend, database, libraries, extras, package manager, folder and name) with a live summary and a big **Create project** button. Works in light, dark and high-contrast themes.

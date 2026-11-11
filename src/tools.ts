@@ -294,6 +294,8 @@ export interface Installer {
     command: string;
     /** Exit codes (besides 0) that are not an error. */
     okExitCodes?: number[];
+    /** Where it downloads from, when the command itself does not show it (encoded scripts). */
+    source?: string;
 }
 
 let wingetAvailable: Promise<boolean> | undefined;
@@ -405,7 +407,149 @@ export async function installerFor(id: ToolId): Promise<Installer | undefined> {
             command: "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
         };
     }
-    return viaSystemManager(id, 'install');
+    const system = await viaSystemManager(id, 'install');
+    // * Windows without winget (LTSC, Server, old Windows 10): official portable download instead.
+    return system ?? (isWindows ? portableWindows(id) : undefined);
+}
+
+// ─── Windows without winget ─────────────────────────────────────────
+//
+// * Windows LTSC / Server and some Windows 10 machines do not ship winget. Instead of sending
+// * the person to a download page, DevStarter downloads the official build of the tool into
+// * %LOCALAPPDATA%\Programs\DevStarter\<tool> and adds it to the user PATH. No admin rights.
+
+/** PowerShell that finds the download URL ($url) of each tool from its official source. */
+const portableSources: Partial<Record<ToolId, { from: string; find: string; bin: string; extra?: string }>> = {
+    gh: {
+        from: 'github.com/cli/cli (official GitHub CLI releases)',
+        find:
+            "$r = Invoke-RestMethod 'https://api.github.com/repos/cli/cli/releases/latest' -UseBasicParsing; " +
+            "$url = ($r.assets | Where-Object { $_.name -like '*_windows_amd64.zip' } | Select-Object -First 1).browser_download_url",
+        bin: 'gh.exe',
+    },
+    git: {
+        from: 'github.com/git-for-windows (official MinGit build)',
+        find:
+            "$r = Invoke-RestMethod 'https://api.github.com/repos/git-for-windows/git/releases/latest' -UseBasicParsing; " +
+            "$url = ($r.assets | Where-Object { $_.name -like 'MinGit-*-64-bit.zip' -and $_.name -notlike '*busybox*' } | Select-Object -First 1).browser_download_url",
+        bin: 'git.exe',
+    },
+    node: {
+        from: 'nodejs.org (official LTS build)',
+        find:
+            // ! Assigned first: Windows PowerShell 5.1 does not unroll a JSON array piped straight from Invoke-RestMethod.
+            "$all = Invoke-RestMethod 'https://nodejs.org/dist/index.json' -UseBasicParsing; " +
+            '$v = ($all | Where-Object { $_.lts } | Select-Object -First 1).version; ' +
+            '$url = "https://nodejs.org/dist/$v/node-$v-win-x64.zip"',
+        bin: 'node.exe',
+        // ? Global npm packages (pnpm…) land in %APPDATA%\npm.
+        extra: "Add-UserPath (Join-Path $env:APPDATA 'npm'); New-Item -ItemType Directory -Force (Join-Path $env:APPDATA 'npm') | Out-Null",
+    },
+    go: {
+        from: 'go.dev (official build)',
+        find:
+            "$v = (Invoke-RestMethod 'https://go.dev/dl/?mode=json' -UseBasicParsing)[0].version; " +
+            '$url = "https://go.dev/dl/$v.windows-amd64.zip"',
+        bin: 'go.exe',
+    },
+    python: {
+        from: 'nuget.org/packages/python (official python.org package)',
+        find: "$url = 'https://www.nuget.org/api/v2/package/python'",
+        bin: 'python.exe',
+    },
+    java: {
+        from: 'adoptium.net (Eclipse Temurin 21)',
+        find: "$url = 'https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse'",
+        bin: 'java.exe',
+        extra: "[Environment]::SetEnvironmentVariable('JAVA_HOME', (Split-Path $bin -Parent), 'User')",
+    },
+};
+
+/**
+ * Turns a PowerShell script into a command that runs it without quoting problems.
+ * @param script PowerShell code
+ */
+function encodedPowerShell(script: string): string {
+    const encoded = Buffer.from(script, 'utf16le').toString('base64');
+    return `powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encoded}`;
+}
+
+/** PowerShell helpers shared by the portable installers. */
+const psPrelude = [
+    "$ErrorActionPreference = 'Stop'",
+    "$ProgressPreference = 'SilentlyContinue'",
+    '[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072',
+    // * Puts a folder first in the user PATH (first, so Store "python" stubs do not win).
+    'function Add-UserPath($dir) {',
+    "  $p = [Environment]::GetEnvironmentVariable('Path', 'User')",
+    "  $parts = @($p -split ';' | Where-Object { $_ -and $_ -ne $dir })",
+    "  [Environment]::SetEnvironmentVariable('Path', (@($dir) + $parts) -join ';', 'User')",
+    '}',
+].join('\n');
+
+/**
+ * Portable installer for Windows machines without winget.
+ * @param id tool
+ */
+function portableWindows(id: ToolId): Installer | undefined {
+    const name = toolName(id);
+    if (id === 'dotnet') {
+        const script = [
+            psPrelude,
+            "$root = Join-Path $env:LOCALAPPDATA 'Programs\\DevStarter\\dotnet'",
+            "$ps1 = Join-Path $env:TEMP 'dotnet-install.ps1'",
+            "Invoke-WebRequest 'https://dot.net/v1/dotnet-install.ps1' -OutFile $ps1 -UseBasicParsing",
+            '& $ps1 -Channel LTS -InstallDir $root',
+            'Add-UserPath $root',
+            "[Environment]::SetEnvironmentVariable('DOTNET_ROOT', $root, 'User')",
+            'Write-Host ".NET SDK installed in $root"',
+        ].join('\n');
+        return {
+            title: `Installing ${name} (official script, no admin rights needed)`,
+            command: encodedPowerShell(script),
+            source: 'dot.net (official dotnet-install script)',
+        };
+    }
+    if (id === 'cargo') {
+        const script = [
+            psPrelude,
+            "$exe = Join-Path $env:TEMP 'rustup-init.exe'",
+            "Invoke-WebRequest 'https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe' -OutFile $exe -UseBasicParsing",
+            '& $exe -y',
+            'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }',
+        ].join('\n');
+        return {
+            title: `Installing ${name} (rustup)`,
+            command: encodedPowerShell(script),
+            source: 'static.rust-lang.org (official rustup)',
+        };
+    }
+    const src = portableSources[id];
+    if (!src) {
+        return undefined;
+    }
+    const script = [
+        psPrelude,
+        `$root = Join-Path $env:LOCALAPPDATA 'Programs\\DevStarter\\${id}'`,
+        src.find,
+        "if (-not $url) { throw 'Could not find the download address.' }",
+        'Write-Host "Downloading $url"',
+        "$zip = Join-Path $env:TEMP ('devstarter-' + [guid]::NewGuid() + '.zip')",
+        'Invoke-WebRequest $url -OutFile $zip -UseBasicParsing',
+        'if (Test-Path $root) { Remove-Item $root -Recurse -Force }',
+        'Expand-Archive $zip $root -Force',
+        'Remove-Item $zip',
+        `$bin = (Get-ChildItem $root -Recurse -Filter '${src.bin}' | Sort-Object { $_.FullName.Length } | Select-Object -First 1).DirectoryName`,
+        `if (-not $bin) { throw '${src.bin} not found in the download.' }`,
+        'Add-UserPath $bin',
+        ...(src.extra ? [src.extra] : []),
+        `Write-Host "${name} installed in $bin"`,
+    ].join('\n');
+    return {
+        title: `Downloading ${name} (no admin rights needed)`,
+        command: encodedPowerShell(script),
+        source: src.from,
+    };
 }
 
 // ─── Package managers ───────────────────────────────────────────────
@@ -588,6 +732,9 @@ export function packageManagerUpdater(id: PackageManagerId): Installer {
  * @param installer installer
  */
 export function installSource(installer: Installer): string {
+    if (installer.source) {
+        return installer.source;
+    }
     const hosts = new Set<string>();
     for (const url of installer.command.match(/https?:\/\/[^\s'")|]+/g) ?? []) {
         hosts.add(new URL(url).host);

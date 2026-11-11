@@ -76,8 +76,11 @@ export async function afterCreate(
  */
 async function openProject(context: vscode.ExtensionContext, launch: PendingLaunch, newWindow: boolean): Promise<void> {
     await context.globalState.update(PENDING_LAUNCH_KEY, launch);
+    // ! While debugging DevStarter (Extension Development Host), reloading this window restarts the
+    // ! extension host attached to the debugger, which crashes it (exit code 134). Use a new window.
+    const debugging = context.extensionMode === vscode.ExtensionMode.Development;
     await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(launch.root), {
-        forceNewWindow: newWindow,
+        forceNewWindow: newWindow || debugging,
     });
 }
 

@@ -2,25 +2,43 @@
  * media/wizard/wizard.css
  * ───────────────────────
  * Styles of the visual New Project wizard (webview).
- * Colors come from the active VS Code theme (--vscode-* variables), so it works in light,
- * dark and high-contrast themes; the brand gradient (teal → indigo → fuchsia) adds accents.
+ *
+ * Layout: a catalog of stacks (left-aligned grid of logo cards), then a form column with a
+ * sticky "build sheet" that sums up the project.
+ *
+ * Color: surfaces and text follow the active VS Code theme, so the page feels native in any
+ * theme. The technology logos bring the color (each in its own brand color); a single coral
+ * accent marks what is selected and the Create button. No gradients, no glows.
+ * Radii: 8px small pieces (tags, chips, tiles, logos) · 10px cards and inputs · 11px panels.
  */
 
 :root {
-    --teal: #2dd4bf;
-    --indigo: #818cf8;
-    --fuchsia: #e879f9;
-    --brand: linear-gradient(120deg, var(--teal), var(--indigo) 55%, var(--fuchsia));
-    --fg: var(--vscode-foreground);
-    --muted: var(--vscode-descriptionForeground);
-    --bg: var(--vscode-editor-background);
-    --surface: color-mix(in srgb, var(--fg) 4%, var(--bg));
-    --surface-hover: color-mix(in srgb, var(--fg) 8%, var(--bg));
-    --border: color-mix(in srgb, var(--fg) 12%, transparent);
-    --accent: var(--vscode-focusBorder, var(--indigo));
-    --selected: color-mix(in srgb, var(--indigo) 16%, var(--bg));
-    --radius: 12px;
-    --mono: var(--vscode-editor-font-family, monospace);
+    /* Neutrals from the theme. */
+    --ink: var(--vscode-foreground);
+    --ink-2: color-mix(in srgb, var(--vscode-descriptionForeground) 80%, var(--ink));
+    --paper: var(--vscode-editor-background);
+    --panel: color-mix(in srgb, var(--ink) 4.5%, var(--paper));
+    --panel-2: color-mix(in srgb, var(--ink) 8%, var(--paper));
+    --line: color-mix(in srgb, var(--ink) 13%, transparent);
+    --line-2: color-mix(in srgb, var(--ink) 24%, transparent);
+
+    /* The one accent. */
+    --accent: #ff6a3d;
+    --accent-ink: #ffffff;
+    --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+
+    --r-sm: 8px;
+    --r-md: 10px;
+    --r-lg: 11px;
+
+    --font: var(--vscode-font-family);
+    --mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+}
+
+body.vscode-light {
+    --accent: #d4461c;
+    --panel: color-mix(in srgb, var(--ink) 3%, var(--paper));
+    --panel-2: color-mix(in srgb, var(--ink) 6%, var(--paper));
 }
 
 * {
@@ -29,23 +47,12 @@
 
 body {
     margin: 0;
-    padding: 0 24px 48px;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: var(--vscode-font-family);
-    font-size: 13px;
-    line-height: 1.45;
-}
-
-/* Soft brand glow at the top of the page. */
-body::before {
-    content: '';
-    position: fixed;
-    inset: -40% -10% auto;
-    height: 420px;
-    background: radial-gradient(closest-side, color-mix(in srgb, var(--indigo) 18%, transparent), transparent);
-    pointer-events: none;
-    z-index: -1;
+    padding: 0 max(20px, 3vw) 56px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 13.5px;
+    line-height: 1.5;
 }
 
 h1,
@@ -53,6 +60,11 @@ h2,
 h3,
 p {
     margin: 0;
+}
+
+h1,
+h2 {
+    text-wrap: balance;
 }
 
 button {
@@ -68,7 +80,7 @@ input:focus-visible {
 }
 
 .muted {
-    color: var(--muted);
+    color: var(--ink-2);
 }
 
 .mono {
@@ -91,16 +103,133 @@ input:focus-visible {
     display: block;
 }
 
+/* Highlighted word in the headings. */
 .gradient {
-    background: var(--brand);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: var(--accent);
+}
+
+.eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-2);
 }
 
 #app {
-    max-width: 1180px;
+    max-width: 1220px;
     margin: 0 auto;
+}
+
+/* ─── Logos ("marks") ─────────────────────────────────────────────── */
+
+.mark {
+    --brand: var(--ink);
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    border-radius: var(--r-sm);
+    background: color-mix(in srgb, var(--brand) 13%, var(--paper));
+    border: 1px solid color-mix(in srgb, var(--brand) 26%, transparent);
+    color: var(--brand);
+    transition: transform 0.18s ease;
+}
+
+.mark svg {
+    fill: currentColor;
+    display: block;
+}
+
+.mark.xs {
+    width: 22px;
+    height: 22px;
+}
+.mark.xs svg {
+    width: 12px;
+    height: 12px;
+}
+.mark.sm {
+    width: 26px;
+    height: 26px;
+}
+.mark.sm svg {
+    width: 15px;
+    height: 15px;
+}
+.mark.md {
+    width: 32px;
+    height: 32px;
+}
+.mark.md svg {
+    width: 18px;
+    height: 18px;
+}
+.mark.lg {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--r-md);
+}
+.mark.lg svg {
+    width: 24px;
+    height: 24px;
+}
+.mark.lg .codicon {
+    font-size: 20px;
+}
+.mark.xl {
+    width: 58px;
+    height: 58px;
+    border-radius: var(--r-lg);
+}
+.mark.xl svg {
+    width: 32px;
+    height: 32px;
+}
+.mark.xl .codicon {
+    font-size: 26px;
+}
+
+/* Logos without enough contrast on this theme use the text color. */
+body:not(.vscode-light) .mark.ink-dark {
+    color: var(--ink);
+    background: var(--panel-2);
+    border-color: var(--line);
+}
+
+body:not(.vscode-light) .mark.ink-mid {
+    color: color-mix(in srgb, var(--brand) 55%, #fff);
+}
+
+body.vscode-light .mark.ink-light {
+    color: color-mix(in srgb, var(--brand) 55%, #000);
+}
+
+/* Codicon marks (no logo): neutral. */
+.mark.plain {
+    color: var(--ink-2);
+    background: var(--panel-2);
+    border-color: var(--line);
+}
+
+/* Ideas use the accent, so they read as "a starting point", not a technology. */
+.mark.idea-mark {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Overlapping row of small logos (an idea's stack, the project's stack). */
+.stack {
+    display: inline-flex;
+    align-items: center;
+}
+
+.stack .mark {
+    box-shadow: 0 0 0 2px var(--panel);
+}
+
+.stack .mark + .mark {
+    margin-left: -5px;
 }
 
 /* ─── Loading ─────────────────────────────────────────────────────── */
@@ -110,15 +239,15 @@ input:focus-visible {
     place-items: center;
     gap: 12px;
     min-height: 60vh;
-    color: var(--muted);
+    color: var(--ink-2);
 }
 
 .spinner {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    border: 3px solid var(--border);
-    border-top-color: var(--indigo);
+    border: 3px solid var(--line);
+    border-top-color: var(--accent);
     animation: spin 0.8s linear infinite;
 }
 
@@ -137,35 +266,29 @@ input:focus-visible {
     gap: 12px;
     padding: 16px 0;
     flex-wrap: wrap;
+    border-bottom: 1px solid var(--line);
 }
 
 .brand {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 15px;
 }
 
 .logo {
-    display: inline-grid;
-    place-items: center;
+    display: block;
     width: 28px;
     height: 28px;
-    border-radius: 8px;
-    background: var(--brand);
-    color: #fff;
+    border-radius: var(--r-sm);
 }
 
 .logo.big {
     width: 56px;
     height: 56px;
-    border-radius: 16px;
-    margin-bottom: 16px;
-}
-
-.logo.big .codicon {
-    font-size: 28px;
+    border-radius: var(--r-lg);
+    margin-bottom: 18px;
 }
 
 .topbar-actions {
@@ -177,42 +300,44 @@ input:focus-visible {
 .link {
     background: none;
     border: none;
-    color: var(--vscode-textLink-foreground);
+    color: var(--ink-2);
     padding: 4px;
 }
 
 .link:hover {
-    text-decoration: underline;
+    color: var(--ink);
 }
 
 /* ─── Hero ────────────────────────────────────────────────────────── */
 
 .hero {
-    padding: 24px 0 8px;
+    padding: 34px 0 6px;
 }
 
 .hero.center {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 10vh;
+    padding-top: 12vh;
 }
 
 .hero h1 {
-    font-size: clamp(24px, 4vw, 34px);
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: clamp(28px, 4.2vw, 40px);
+    font-weight: 750;
+    letter-spacing: -0.025em;
+    line-height: 1.12;
 }
 
 .lead {
-    color: var(--muted);
-    font-size: 14px;
-    margin-top: 6px;
+    color: var(--ink-2);
+    font-size: 15px;
+    margin-top: 8px;
+    max-width: 60ch;
 }
 
 .search-wrap {
     position: relative;
-    margin-top: 20px;
+    margin-top: 24px;
     max-width: 640px;
 }
 
@@ -221,19 +346,29 @@ input:focus-visible {
     left: 14px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--muted);
+    color: var(--ink-2);
 }
 
 .search,
 .name {
     width: 100%;
-    padding: 11px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--vscode-input-border, var(--border));
+    padding: 12px 14px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line-2);
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     font: inherit;
-    font-size: 14px;
+    font-size: 14.5px;
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
+}
+
+.search:focus,
+.name:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .search {
@@ -243,127 +378,138 @@ input:focus-visible {
 .chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 14px;
+    gap: 6px;
+    margin-top: 16px;
 }
 
 .chip {
-    padding: 5px 14px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-2);
+    font-weight: 600;
     transition:
         background 0.15s,
+        color 0.15s,
         border-color 0.15s;
 }
 
 .chip:hover {
-    background: var(--surface-hover);
+    color: var(--ink);
+    background: var(--panel);
+}
+
+.chip-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0.75;
 }
 
 .chip.selected {
-    border-color: transparent;
-    background: var(--brand);
-    color: #fff;
-    font-weight: 600;
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
 }
 
 /* ─── Cards ───────────────────────────────────────────────────────── */
 
 .card {
     position: relative;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
     text-align: left;
 }
 
 button.card {
     padding: 16px;
     transition:
-        transform 0.15s ease,
-        border-color 0.15s,
-        background 0.15s,
-        box-shadow 0.15s;
+        transform 0.18s ease,
+        border-color 0.18s,
+        background 0.18s;
 }
 
 button.card:hover {
     transform: translateY(-2px);
-    background: var(--surface-hover);
-    border-color: color-mix(in srgb, var(--indigo) 55%, transparent);
-    box-shadow: 0 8px 24px -12px color-mix(in srgb, var(--indigo) 60%, transparent);
+    background: var(--panel-2);
+    border-color: var(--line-2);
 }
 
-.card-icon {
-    display: inline-grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--indigo) 18%, transparent);
-    color: var(--indigo);
-    flex: none;
-}
-
-.card-icon.big {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-}
-
-.card-icon.big .codicon {
-    font-size: 24px;
-}
-
-.idea .card-icon {
-    background: color-mix(in srgb, var(--fuchsia) 18%, transparent);
-    color: var(--fuchsia);
+button.card:hover .mark {
+    transform: scale(1.06);
 }
 
 .badge {
     display: inline-block;
-    padding: 1px 8px;
-    border-radius: 999px;
+    padding: 2px 8px;
+    border-radius: var(--r-sm);
     font-size: 11px;
-    font-weight: 600;
-    color: #fff;
-    background: var(--brand);
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
     white-space: nowrap;
 }
 
+.tag {
+    align-self: flex-start;
+    padding: 2px 8px;
+    border-radius: var(--r-sm);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    border: 1px solid var(--line);
+}
+
 .group {
-    margin-top: 28px;
+    margin-top: 36px;
 }
 
 .group-head {
     display: flex;
     align-items: baseline;
     gap: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     flex-wrap: wrap;
 }
 
 .group-head h2 {
-    font-size: 16px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-2);
 }
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
     gap: 12px;
 }
 
 .pick-card {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    animation: rise 0.35s ease both;
-    animation-delay: calc(var(--i, 0) * 25ms);
+    gap: 6px;
+    animation: rise 0.3s ease both;
+    animation-delay: calc(var(--i, 0) * 20ms);
+}
+
+.card-title {
+    font-size: 15px;
+    font-weight: 700;
 }
 
 .pick-card p {
-    color: var(--muted);
-    margin-top: 6px;
+    color: var(--ink-2);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -377,12 +523,42 @@ button.card:hover {
     margin-bottom: 6px;
 }
 
+.card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 8px;
+}
+
+.card-go {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition:
+        opacity 0.18s,
+        transform 0.18s;
+}
+
+.pick-card:hover .card-go,
+.pick-card:focus-visible .card-go {
+    opacity: 1;
+    transform: none;
+}
+
 .repeat {
     display: flex;
     align-items: center;
     gap: 14px;
     width: 100%;
-    margin-top: 20px;
+    margin-top: 22px;
     border-style: dashed;
 }
 
@@ -392,9 +568,10 @@ button.card:hover {
 }
 
 .empty {
-    color: var(--muted);
+    color: var(--ink-2);
     padding: 40px 0;
     text-align: center;
+    font-size: 15px;
 }
 
 @keyframes rise {
@@ -408,25 +585,25 @@ button.card:hover {
 
 .level-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
-    max-width: 640px;
-    margin: 28px auto 16px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+    max-width: 660px;
+    margin: 30px auto 18px;
 }
 
 .level-card {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     padding: 22px !important;
 }
 
 .level-card strong {
-    font-size: 15px;
+    font-size: 16px;
 }
 
 .level-card p {
-    color: var(--muted);
+    color: var(--ink-2);
 }
 
 /* ─── Configure screen ────────────────────────────────────────────── */
@@ -434,36 +611,43 @@ button.card:hover {
 .config-head {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 4px 0 20px;
+    gap: 16px;
+    padding: 16px 0 22px;
 }
 
 .back {
     align-self: flex-start;
-    background: none;
-    border: none;
-    color: var(--muted);
-    padding: 4px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-2);
 }
 
 .back:hover {
-    color: var(--fg);
+    color: var(--ink);
+    background: var(--panel);
 }
 
 .config-title {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
 }
 
 .config-title h1 {
-    font-size: 24px;
+    font-size: 30px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
 }
 
 .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 20px;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    gap: 22px;
     align-items: start;
 }
 
@@ -474,7 +658,8 @@ button.card:hover {
 }
 
 .panel {
-    padding: 18px;
+    padding: 20px;
+    border-radius: var(--r-lg);
     animation: rise 0.25s ease both;
 }
 
@@ -484,12 +669,14 @@ button.card:hover {
 
 .panel-head {
     display: flex;
+    align-items: center;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 
 .panel-head h2 {
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 700;
 }
 
 .panel-icon {
@@ -497,42 +684,58 @@ button.card:hover {
     place-items: center;
     width: 30px;
     height: 30px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--teal) 16%, transparent);
-    color: var(--teal);
+    border-radius: var(--r-sm);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
     flex: none;
 }
 
 /* Segmented control (language, experience level). */
 .segmented {
     display: inline-flex;
-    gap: 4px;
-    padding: 4px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--fg) 6%, transparent);
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--r-md);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
     flex-wrap: wrap;
 }
 
 .segment {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     padding: 8px 14px;
     border: none;
-    border-radius: 7px;
+    border-radius: var(--r-sm);
     background: none;
-    color: var(--muted);
+    color: var(--ink-2);
+    font-weight: 600;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+
+.segment:hover:not(.selected) {
+    color: var(--ink);
 }
 
 .segment small {
-    opacity: 0.8;
+    font-weight: 400;
+    opacity: 0.85;
 }
 
 .segment.selected {
-    background: var(--bg);
-    color: var(--fg);
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow:
+        0 0 0 1px var(--line-2),
+        0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.segment.selected .codicon {
+    color: var(--accent);
 }
 
 .segmented.small .segment {
@@ -542,7 +745,7 @@ button.card:hover {
 /* Tiles: single or multiple choice. */
 .tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 8px;
 }
 
@@ -551,18 +754,19 @@ button.card:hover {
 }
 
 .tiles.checks {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
 }
 
 .tile {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
     min-width: 0;
-    padding: 10px 12px;
+    padding: 11px 12px;
     text-align: left;
-    border-radius: 10px;
-    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
     background: transparent;
     transition:
         border-color 0.15s,
@@ -570,25 +774,48 @@ button.card:hover {
 }
 
 .tile:hover {
-    background: var(--surface-hover);
+    background: var(--panel-2);
+    border-color: var(--line-2);
 }
 
 .tile.selected {
-    border-color: var(--indigo);
-    background: var(--selected);
-    box-shadow: inset 0 0 0 1px var(--indigo);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* Check in the corner of a selected single-choice tile. */
+.tile.selected:not(.check)::after {
+    content: '';
+    position: absolute;
+    top: 9px;
+    right: 9px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.tile strong {
+    font-size: 13.5px;
 }
 
 .tile p {
-    color: var(--muted);
+    color: var(--ink-2);
     font-size: 12px;
 }
 
 .tile-top {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     flex-wrap: wrap;
+    padding-right: 16px;
+}
+
+.tile-top > .codicon {
+    color: var(--ink-2);
 }
 
 .tile.check {
@@ -597,15 +824,22 @@ button.card:hover {
     gap: 10px;
 }
 
+.check-text {
+    min-width: 0;
+}
+
 .box {
     display: inline-grid;
     place-items: center;
     width: 18px;
     height: 18px;
-    margin-top: 1px;
+    margin-top: 4px;
     border-radius: 5px;
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--line-2);
     flex: none;
+    transition:
+        background 0.15s,
+        border-color 0.15s;
 }
 
 .box .codicon {
@@ -614,9 +848,9 @@ button.card:hover {
 }
 
 .tile.check.selected .box {
-    background: var(--indigo);
-    border-color: var(--indigo);
-    color: #fff;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
 }
 
 .tile.check.selected .box .codicon {
@@ -624,14 +858,16 @@ button.card:hover {
 }
 
 .lib-group + .lib-group {
-    margin-top: 14px;
+    margin-top: 16px;
 }
 
 .lib-group h3 {
+    font-family: var(--mono);
     font-size: 11px;
+    font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--muted);
+    color: var(--ink-2);
     margin-bottom: 8px;
 }
 
@@ -652,28 +888,29 @@ button.card:hover {
     gap: 12px;
     padding: 10px 12px;
     text-align: left;
-    border: 1px solid transparent;
-    border-radius: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
     background: transparent;
+    transition:
+        background 0.15s,
+        border-color 0.15s;
 }
 
 .switch-row:hover {
-    background: var(--surface-hover);
+    background: var(--panel-2);
 }
 
-.row-icon {
-    color: var(--muted);
-}
-
-.switch-row.selected .row-icon {
-    color: var(--teal);
+.switch-row:not(.selected) .mark {
+    filter: grayscale(1);
+    opacity: 0.7;
 }
 
 .row-text {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
+    min-width: 0;
 }
 
 .row-text > div {
@@ -687,7 +924,7 @@ button.card:hover {
     width: 36px;
     height: 20px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--fg) 20%, transparent);
+    background: var(--line-2);
     transition: background 0.2s;
     flex: none;
 }
@@ -700,11 +937,12 @@ button.card:hover {
     height: 16px;
     border-radius: 50%;
     background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s;
 }
 
 .switch-row.selected .switch {
-    background: var(--brand);
+    background: var(--accent);
 }
 
 .switch-row.selected .knob {
@@ -714,8 +952,8 @@ button.card:hover {
 /* Name field. */
 .field-label {
     display: block;
-    font-weight: 600;
-    margin: 16px 0 6px;
+    font-weight: 700;
+    margin: 18px 0 8px;
 }
 
 .name {
@@ -732,56 +970,54 @@ button.card:hover {
     color: var(--vscode-errorForeground, #f14c4c);
 }
 
-/* Summary sidebar. */
+/* ─── Build sheet (summary) ───────────────────────────────────────── */
+
 .summary {
     position: sticky;
     top: 16px;
 }
 
 .summary-card {
-    padding: 18px;
-    overflow: hidden;
-}
-
-/* Gradient line on top of the summary card. */
-.summary-card::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto;
-    height: 3px;
-    background: var(--brand);
-}
-
-.summary-head {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px;
+    border-radius: var(--r-lg);
 }
 
 .summary-head > div {
     display: flex;
     flex-direction: column;
+    gap: 2px;
     min-width: 0;
 }
 
 .project-name {
-    font-size: 17px;
+    font-family: var(--mono);
+    font-size: 19px;
+    font-weight: 700;
     word-break: break-all;
 }
 
+.summary-card .stack .mark {
+    box-shadow: 0 0 0 2px var(--panel);
+}
+
 .path {
-    margin-top: 10px;
+    padding: 7px 10px;
+    border-radius: var(--r-sm);
+    background: var(--panel-2);
     word-break: break-all;
 }
 
 .plain {
-    margin-top: 12px;
+    font-size: 13.5px;
 }
 
 .facts {
     list-style: none;
     padding: 0;
-    margin: 12px 0 16px;
+    margin: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -789,29 +1025,34 @@ button.card:hover {
 
 .facts li {
     padding: 2px 8px;
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--fg) 7%, transparent);
-    font-size: 12px;
+    border-radius: var(--r-sm);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    border: 1px solid var(--line);
+    color: var(--ink);
 }
 
 .create {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     width: 100%;
-    padding: 12px;
+    padding: 13px;
     border: none;
-    border-radius: 10px;
-    background: var(--brand);
-    background-size: 200% 100%;
-    color: #fff;
+    border-radius: var(--r-md);
+    background: var(--accent);
+    color: var(--accent-ink);
     font-weight: 700;
-    font-size: 14px;
+    font-size: 15px;
     transition:
-        background-position 0.4s,
+        background 0.15s,
         transform 0.1s,
         opacity 0.2s;
 }
 
 .create:hover:not(:disabled) {
-    background-position: 100% 0;
+    background: color-mix(in srgb, var(--accent) 88%, #000);
 }
 
 .create:active:not(:disabled) {
@@ -819,17 +1060,84 @@ button.card:hover {
 }
 
 .create:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     cursor: not-allowed;
 }
 
-.summary-card .small {
-    margin-top: 10px;
+/* ─── Beginner mode ───────────────────────────────────────────────── */
+
+.see-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 22px;
+    padding: 10px 16px;
+    border-radius: var(--r-md);
+    border: 1px dashed var(--line-2);
+    background: transparent;
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.see-all:hover {
+    background: var(--panel);
+    border-color: var(--accent);
+}
+
+.customize {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 16px 18px;
+    text-align: left;
+    border-radius: var(--r-lg);
+    border: 1px dashed var(--line-2);
+    background: transparent;
+}
+
+.customize:hover {
+    background: var(--panel);
+}
+
+.customize > .codicon:first-child {
+    color: var(--accent);
+    font-size: 18px;
+}
+
+.customize span {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.customize small {
+    color: var(--ink-2);
+    font-size: 12.5px;
+}
+
+.customize > .codicon:last-child {
+    transition: transform 0.2s;
+}
+
+.customize.open > .codicon:last-child {
+    transform: rotate(180deg);
+}
+
+.optional {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.optional[hidden] {
+    display: none;
 }
 
 /* ─── Narrow editors ──────────────────────────────────────────────── */
 
-@media (max-width: 820px) {
+@media (max-width: 860px) {
     .layout {
         grid-template-columns: 1fr;
     }
@@ -848,14 +1156,22 @@ button.card:hover {
 /* ! Respect people who turned animations off in their OS. */
 @media (prefers-reduced-motion: reduce) {
     *,
-    *::before {
+    *::before,
+    *::after {
         animation: none !important;
         transition: none !important;
     }
 }
 
-/* High-contrast themes: rely on borders, not tints. */
+/* High-contrast themes: borders instead of tints. */
+body.vscode-high-contrast .mark {
+    background: transparent;
+    border-color: var(--vscode-contrastBorder);
+}
+
 body.vscode-high-contrast .tile.selected,
-body.vscode-high-contrast .chip.selected {
+body.vscode-high-contrast .chip.selected,
+body.vscode-high-contrast .switch-row.selected,
+body.vscode-high-contrast .segment.selected {
     outline: 2px solid var(--vscode-contrastActiveBorder);
 }

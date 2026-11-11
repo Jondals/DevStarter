@@ -6,6 +6,19 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # ! @types/vscode must match the minimum VS Code in "engines.vscode" (1.90): a newer one
+      # ! lets code use APIs older editors lack, and vsce refuses to package it.
+      - dependency-name: '@types/vscode'
+      # ! @types/node follows the Node.js inside that VS Code (22.x), not the newest Node.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # ! Major TypeScript versions (7 = the native compiler) need a manual migration.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      # ? @vscode/test-electron 3 changes how tests start; update it by hand with the tests.
+      - dependency-name: '@vscode/test-electron'
+        update-types: ['version-update:semver-major']
     groups:
       dev-dependencies:
         patterns: ['*']

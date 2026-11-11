@@ -241,6 +241,7 @@ const categoryLabels: Record<Category, string> = {
     'Full-stack': 'Full-stack · frontend + backend in one framework',
     Backend: 'Backend · APIs & servers',
     Mobile: 'Mobile · apps for your phone',
+    Desktop: 'Desktop · apps and browser extensions',
     Other: 'Other · scripts & more',
 };
 

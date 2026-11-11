@@ -8,20 +8,38 @@ import { backendTemplates } from './backend';
 import { frontendTemplates } from './frontend';
 import { fullstackTemplates } from './fullstack';
 import { mobileTemplates, otherTemplates } from './other';
-import { Template } from './types';
+import { desktopTemplates, moreBackendTemplates, moreFullstackTemplates, moreOtherTemplates } from './more';
+import { Category, Template } from './types';
 
 export * from './types';
 export * from './libraries';
 export * from './presets';
 
+/** Order of the categories in the wizard. */
+const categoryOrder: Category[] = ['Frontend', 'Full-stack', 'Backend', 'Mobile', 'Desktop', 'Other'];
+
+/**
+ * Wizard order: by category, then by popularity (rank 1 = most used).
+ * @param a first template
+ * @param b second template
+ */
+function byCategoryAndRank(a: Template, b: Template): number {
+    const category = categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category);
+    return category || (a.rank ?? 99) - (b.rank ?? 99);
+}
+
 /** Every template, in the order they appear in the wizard. */
 export const templates: Template[] = [
     ...frontendTemplates,
     ...fullstackTemplates,
+    ...moreFullstackTemplates,
     ...backendTemplates,
+    ...moreBackendTemplates,
     ...mobileTemplates,
+    ...desktopTemplates,
     ...otherTemplates,
-];
+    ...moreOtherTemplates,
+].sort(byCategoryAndRank);
 
 /** Whether it is a backend that can be added to a frontend. */
 function isAttachableBackend(t: Template): boolean {

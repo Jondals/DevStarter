@@ -43,6 +43,7 @@ import {
     toChoice,
     WizardContext,
 } from '../wizardModel';
+import { logosForLibrary, logosForOther, logosForPreset, logosForTemplate } from './logos';
 
 /** What the visual wizard resolves with: a choice, a request to use quick mode, or nothing (closed). */
 export type PanelResult = ProjectChoice | 'quick' | undefined;
@@ -55,6 +56,8 @@ interface Card {
     kind: 'preset' | 'template';
     id: string;
     icon: string;
+    /** Technology logos (media/wizard/logos.js slugs); the icon is the fallback. */
+    logos?: string[];
     label: string;
     description: string;
     detail: string;
@@ -67,6 +70,7 @@ interface Card {
 interface ViewOption {
     id: string;
     icon?: string;
+    logos?: string[];
     label: string;
     description?: string;
     detail?: string;
@@ -79,7 +83,9 @@ interface View {
     screen: 'level' | 'pick' | 'configure';
     beginner: boolean;
     /** Template being configured. */
-    template?: { id: string; icon: string; label: string; description: string };
+    template?: { id: string; icon: string; label: string; description: string; logos?: string[] };
+    /** Logos of the whole chosen stack (summary). */
+    stackLogos?: string[];
     /** "Repeat last setup" card, if there is one. */
     last?: string;
     typescript?: boolean;
@@ -376,9 +382,10 @@ class WizardSession {
             // ? Unticking Git also unticks GitHub: publishing needs a repository.
             if (id === 'git') {
                 ticked.delete('publish');
+                ticked.delete('existing');
             }
         }
-        setExtras(d, ticked);
+        setExtras(d, ticked, on ? id : undefined);
     }
 
     /**
@@ -416,7 +423,13 @@ class WizardSession {
         if (!t || this.screen !== 'configure') {
             return view;
         }
-        view.template = { id: t.id, icon: t.icon, label: t.label, description: t.description };
+        view.template = {
+            id: t.id,
+            icon: t.icon,
+            label: t.label,
+            description: t.description,
+            logos: logosForTemplate(t.id),
+        };
         view.typescript = t.languages ? d.typescript : undefined;
         view.backends = t.acceptsBackend ? this.backendOptions() : undefined;
         view.database = this.databaseOptions();
@@ -430,6 +443,7 @@ class WizardSession {
                 detail: o.detail,
                 selected: o.picked,
                 recommended: o.advised,
+                logos: logosForOther(o.value),
             };
         });
         view.packageManagers = usesNode({ template: t, backend: d.backend }) ? this.pmOptions() : undefined;
@@ -442,6 +456,7 @@ class WizardSession {
         const choice = toChoice({ ...d, name: view.name, parentDir: d.parentDir ?? '' });
         view.summary = describe(choice);
         view.plain = plainSummary(choice);
+        view.stackLogos = stackLogos(choice.template.id, d.backend?.id, d.database, view.packageManagers && d.pm.id);
         return view;
     }
 
@@ -508,6 +523,7 @@ class WizardSession {
                 label: databaseInfo[db].label,
                 description: db === 'SQLite' ? 'easiest' : undefined,
                 detail: databaseInfo[db].detail,
+                logos: logosForOther(db),
                 selected: db === selected,
                 recommended: db === 'SQLite',
             });
@@ -530,6 +546,7 @@ class WizardSession {
                 description: lib.description,
                 detail: lib.detail,
                 selected: this.draft.libraries.has(lib.id),
+                logos: logosForLibrary(lib.id),
             });
         }
         return groups;
@@ -545,6 +562,7 @@ class WizardSession {
                 label: p.id,
                 description: packageManagerStatus(p),
                 detail: packageManagerInfo[p.id],
+                logos: logosForOther(p.id),
                 selected: p.id === selected,
                 recommended: p.id === 'npm',
             };
@@ -566,7 +584,25 @@ function templateOption(t: Template, selected: boolean): ViewOption {
         detail: t.detail,
         selected,
         recommended: t.recommended,
+        logos: logosForTemplate(t.id),
     };
+}
+
+/**
+ * Logos of the whole chosen stack, without repeats (for the summary).
+ * @param templateId main template
+ * @param backendId backend, if any
+ * @param database database, if any
+ * @param pm package manager, if the project uses one
+ */
+function stackLogos(templateId: string, backendId?: string, database?: string, pm?: string): string[] {
+    const all = [
+        ...(logosForTemplate(templateId) ?? []),
+        ...(backendId ? (logosForTemplate(backendId) ?? []) : []),
+        ...(database ? (logosForOther(database) ?? []) : []),
+        ...(pm ? (logosForOther(pm) ?? []) : []),
+    ];
+    return [...new Set(all)];
 }
 
 /** Cards of the "pick" screen: every idea and every technology. */
@@ -582,6 +618,7 @@ function cards(): Card[] {
             detail: p.detail,
             category: 'Ideas',
             recommended: false,
+            logos: logosForPreset(p.id),
         });
     }
     for (const t of templates) {
@@ -594,6 +631,7 @@ function cards(): Card[] {
             detail: t.detail,
             category: t.category,
             recommended: !!t.recommended,
+            logos: logosForTemplate(t.id),
         });
     }
     return result;
@@ -629,7 +667,8 @@ function pageHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string {
 <title>New Project</title>
 </head>
 <body>
-<div id="app" class="loading"><div class="spinner"></div><p>Checking your tools…</p></div>
+<div id="app" class="loading" data-logo="${asset('media', 'icon.png')}"><div class="spinner"></div><p>Checking your tools…</p></div>
+<script nonce="${nonce}" src="${asset('media', 'wizard', 'logos.js')}"></script>
 <script nonce="${nonce}" src="${asset('media', 'wizard', 'wizard.js')}"></script>
 </body>
 </html>`;

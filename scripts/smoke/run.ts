@@ -35,7 +35,13 @@ interface SmokeCase {
 
 const cases: SmokeCase[] = [
     { id: 'vanilla-3d', template: 'vanilla', typescript: false, libraries: ['three', 'gsap'] },
-    { id: 'react-express', template: 'react', backend: 'express', database: 'SQLite', libraries: ['zustand', 'helmet'] },
+    {
+        id: 'react-express',
+        template: 'react',
+        backend: 'express',
+        database: 'SQLite',
+        libraries: ['zustand', 'helmet'],
+    },
     { id: 'vue', template: 'vue', libraries: ['pinia', 'vitest'] },
     { id: 'svelte', template: 'svelte' },
     { id: 'next', template: 'next', database: 'SQLite' },
@@ -47,6 +53,15 @@ const cases: SmokeCase[] = [
     { id: 'expo', template: 'expo' },
     { id: 'fastapi', template: 'fastapi', database: 'SQLite', libraries: ['pytest-fastapi'], python: true },
     { id: 'django', template: 'django', libraries: ['drf'], python: true },
+    { id: 'solid', template: 'solid' },
+    { id: 'preact', template: 'preact' },
+    { id: 'lit', template: 'lit' },
+    { id: 'react-router', template: 'react-router' },
+    { id: 'react-fastify', template: 'react', backend: 'fastify', libraries: ['recharts', 'socket-server'] },
+    { id: 'hono', template: 'hono', libraries: ['anthropic'] },
+    { id: 'electron', template: 'electron' },
+    { id: 'wxt', template: 'wxt' },
+    { id: 'discord-bot', template: 'discord-bot' },
 ];
 
 /**
@@ -67,7 +82,7 @@ async function runCase(c: SmokeCase, parentDir: string, python: string | undefin
         tailwind: !!template.tailwind,
         database: c.database,
         libraries: c.libraries ?? [],
-        extras: ['git'],
+        extras: ['git', 'ai'],
         pm: packageManager('npm', 'installed'),
         name: `smoke-${c.id}`,
         parentDir,

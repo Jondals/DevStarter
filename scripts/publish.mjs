@@ -36,7 +36,8 @@ const stores = {
     marketplace: {
         label: 'Microsoft Marketplace',
         tokenVariable: 'VSCE_PAT',
-        tokenHelp: 'Un token de Azure DevOps con el permiso "Marketplace → Manage" (https://dev.azure.com → User settings → Personal access tokens).',
+        tokenHelp:
+            'Un token de Azure DevOps con el permiso "Marketplace → Manage" (https://dev.azure.com → User settings → Personal access tokens).',
         link: 'https://marketplace.visualstudio.com/items?itemName=' + manifest.publisher + '.' + manifest.name,
     },
     openvsx: {
@@ -234,7 +235,8 @@ async function publishedInOpenVsx(version) {
  */
 export async function alreadyPublished(store, version) {
     try {
-        const state = store === 'marketplace' ? await publishedInMarketplace(version) : await publishedInOpenVsx(version);
+        const state =
+            store === 'marketplace' ? await publishedInMarketplace(version) : await publishedInOpenVsx(version);
         return state.published === true;
     } catch (error) {
         warn('No pude consultar ' + stores[store].label + ' (' + error.message + '). Sigo igualmente.');
@@ -271,9 +273,22 @@ async function runChecks(options) {
 
 /** Advice for the most common errors of each store. */
 const hints = [
-    [/Unknown publisher|namespace .* not found|not a valid namespace/i, 'El namespace "' + manifest.publisher + '" no existe en Open VSX. Crealo una vez con: pnpm exec ovsx create-namespace ' + manifest.publisher + ' -p <token>'],
-    [/401|403|Access Denied|Unauthorized|invalid.*token|Personal Access Token/i, 'El token no sirve o caduco. Revisa que sea del publicador correcto y que tenga permiso para publicar.'],
-    [/already exists|already published|version .* exists/i, 'Esa version ya esta publicada: sube la version en package.json y escribe su entrada en el CHANGELOG.'],
+    [
+        /Unknown publisher|namespace .* not found|not a valid namespace/i,
+        'El namespace "' +
+            manifest.publisher +
+            '" no existe en Open VSX. Crealo una vez con: pnpm exec ovsx create-namespace ' +
+            manifest.publisher +
+            ' -p <token>',
+    ],
+    [
+        /401|403|Access Denied|Unauthorized|invalid.*token|Personal Access Token/i,
+        'El token no sirve o caduco. Revisa que sea del publicador correcto y que tenga permiso para publicar.',
+    ],
+    [
+        /already exists|already published|version .* exists/i,
+        'Esa version ya esta publicada: sube la version en package.json y escribe su entrada en el CHANGELOG.',
+    ],
     [/ENOTFOUND|ETIMEDOUT|ECONNRESET|network/i, 'Parece un problema de red. Comprueba tu conexion y repite.'],
 ];
 
@@ -289,7 +304,9 @@ async function publishTo(store, vsix, token) {
         store === 'marketplace'
             ? ['exec', 'vsce', 'publish', '--packagePath', vsix]
             : ['exec', 'ovsx', 'publish', vsix];
-    console.log(paint('gray', '\n  $ pnpm ' + args.join(' ') + '   (token en ' + info.tokenVariable + ', no se muestra)'));
+    console.log(
+        paint('gray', '\n  $ pnpm ' + args.join(' ') + '   (token en ' + info.tokenVariable + ', no se muestra)'),
+    );
     const result = await run('pnpm', args, { [info.tokenVariable]: token });
     if (result.code === 0) {
         ok('Publicado en ' + info.label);
@@ -332,7 +349,10 @@ async function main() {
     const version = manifest.version;
     const targets = options.only ? [options.only] : ['marketplace', 'openvsx'];
 
-    console.log(paint('bold', manifest.displayName + ' ' + version) + paint('gray', '  →  ' + manifest.publisher + '.' + manifest.name));
+    console.log(
+        paint('bold', manifest.displayName + ' ' + version) +
+            paint('gray', '  →  ' + manifest.publisher + '.' + manifest.name),
+    );
     if (options.dryRun) {
         warn('MODO ENSAYO: se comprueba y se empaqueta, pero no se publica nada.');
     }
@@ -382,7 +402,16 @@ async function main() {
 
     if (options.dryRun) {
         section('Ensayo terminado');
-        ok('Todo listo para publicar ' + version + ' en: ' + pending.map(function (s) { return stores[s].label; }).join(' y '));
+        ok(
+            'Todo listo para publicar ' +
+                version +
+                ' en: ' +
+                pending
+                    .map(function (s) {
+                        return stores[s].label;
+                    })
+                    .join(' y '),
+        );
         console.log(paint('gray', '    Para publicar de verdad: pnpm publish:all'));
         return 0;
     }
@@ -413,7 +442,17 @@ async function main() {
             fail('Sin terminal interactiva hace falta --yes para confirmar.');
             return 1;
         }
-        const answer = await ask('\n  ¿Publicar ' + version + ' en ' + pending.map(function (s) { return stores[s].label; }).join(' y ') + '? Esto no se puede deshacer. (s/N) ');
+        const answer = await ask(
+            '\n  ¿Publicar ' +
+                version +
+                ' en ' +
+                pending
+                    .map(function (s) {
+                        return stores[s].label;
+                    })
+                    .join(' y ') +
+                '? Esto no se puede deshacer. (s/N) ',
+        );
         if (!/^(s|si|sí|y|yes)$/i.test(answer.trim())) {
             warn('Cancelado. No se ha publicado nada.');
             return 1;
@@ -438,7 +477,10 @@ async function main() {
         if (await waitUntilVisible(store, version, seconds)) {
             ok(stores[store].label + ': la version ' + version + ' ya es visible');
         } else {
-            warn(stores[store].label + ': subida correcta, pero aun no se ve la version (la tienda sigue validando). Mira en unos minutos.');
+            warn(
+                stores[store].label +
+                    ': subida correcta, pero aun no se ve la version (la tienda sigue validando). Mira en unos minutos.',
+            );
         }
         console.log(paint('gray', '    ' + stores[store].link));
     }
@@ -447,7 +489,18 @@ async function main() {
         return !results[s];
     });
     if (failed.length) {
-        console.log('\n' + paint('red', 'Terminado con errores en: ' + failed.map(function (s) { return stores[s].label; }).join(', ')));
+        console.log(
+            '\n' +
+                paint(
+                    'red',
+                    'Terminado con errores en: ' +
+                        failed
+                            .map(function (s) {
+                                return stores[s].label;
+                            })
+                            .join(', '),
+                ),
+        );
         console.log(paint('gray', 'Puedes repetir solo esa tienda: pnpm publish:' + failed[0]));
         return 1;
     }

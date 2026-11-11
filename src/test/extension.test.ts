@@ -35,6 +35,8 @@ import { scaffolderTag } from '../updates';
 import { isNodeEngineError, requiredNodeFromOutput, satisfies } from '../updates';
 import { detectFramework, detectParts, updateSteps } from '../updater';
 import { useCmdWrappers } from '../psPolicy';
+import { setExtras } from '../wizardModel';
+import { sanitizeRepoName } from '../github';
 
 /**
  * A project choice with default values, so each test does not repeat them.
@@ -189,10 +191,32 @@ suite('DevStarter', function () {
         assert.ok(librariesFor('react').length >= 5);
     });
 
+    test('templates are listed by category and then by popularity', function () {
+        const order = ['Frontend', 'Full-stack', 'Backend', 'Mobile', 'Desktop', 'Other'];
+        for (let i = 1; i < templates.length; i++) {
+            const a = templates[i - 1];
+            const b = templates[i];
+            const byCategory = order.indexOf(a.category) - order.indexOf(b.category);
+            assert.ok(byCategory < 0 || (byCategory === 0 && (a.rank ?? 99) <= (b.rank ?? 99)), `${a.id} → ${b.id}`);
+        }
+        assert.strictEqual(templates[0].id, 'react');
+    });
+
+    test('only one GitHub destination can be ticked, and it brings Git along', function () {
+        const d = { template: findTemplate('react'), tailwind: true, extras: new Set() } as unknown as Parameters<
+            typeof setExtras
+        >[0];
+        setExtras(d, ['publish', 'existing'], 'existing');
+        assert.deepStrictEqual([...d.extras].sort(), ['existing', 'git']);
+        setExtras(d, ['publish', 'existing'], 'publish');
+        assert.deepStrictEqual([...d.extras].sort(), ['git', 'publish']);
+        assert.strictEqual(sanitizeRepoName('My App (v2)'), 'My-App-v2');
+    });
+
     test('no combination of template, backend, libraries and extras throws', function () {
         const extraSets: Array<ProjectChoice['extras']> = [
             [],
-            ['git', 'vscode', 'ci', 'license', 'prettier', 'dockerfile', 'compose', 'publish'],
+            ['git', 'vscode', 'ci', 'license', 'prettier', 'dockerfile', 'compose', 'publish', 'ai'],
         ];
         let combinations = 0;
         for (const t of templates) {
@@ -349,6 +373,8 @@ suite('DevStarter', function () {
             backend: findTemplate('fastapi'),
             database: 'PostgreSQL',
             extras: ['git', 'compose', 'ci', 'license', 'publish'],
+            // * The GitHub account is resolved before the build (sign-in with VS Code).
+            github: { token: 'test', login: 'octocat', email: '1+octocat@users.noreply.github.com', private: true },
         });
         const project = buildProject(c);
         assert.strictEqual(project.devAll, 'npm run dev');
@@ -358,11 +384,13 @@ suite('DevStarter', function () {
             'Writing GitHub Actions workflow',
             'Writing LICENSE (MIT)',
             'Creating Git repository',
-            'Publishing to GitHub (private repository)',
+            'Setting the commit author',
+            'Publishing to GitHub',
         ]) {
             assert.ok(titles.includes(title), title);
         }
-        assert.deepStrictEqual(requiredTools(c), ['node', 'python', 'git', 'gh']);
+        // ? No GitHub CLI any more: publishing only needs Git.
+        assert.deepStrictEqual(requiredTools(c), ['node', 'python', 'git']);
     });
 
     test('describes a project in one line', function () {

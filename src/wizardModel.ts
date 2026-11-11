@@ -161,7 +161,7 @@ export function initialDraft(
         typescript: true,
         tailwind: true,
         libraries: new Set<string>(),
-        extras: new Set<Extra>(['vscode']),
+        extras: new Set<Extra>(['vscode', 'ai']),
         pm: defaultPackageManager(pms, config.get<PackageManagerId>('defaultPackageManager', 'npm')),
     };
     if (git.version && config.get('initGit', true)) {
@@ -281,7 +281,7 @@ export function extraOptions(d: Draft, git: ToolInfo, gh?: ToolInfo): ExtraOptio
     /** Adds one option; the ones DevStarter ticks by default are the recommended ones. */
     function add(value: ExtraOption['value'], icon: string, label: string, description: string, detail: string): void {
         const picked = value === 'tailwind' ? d.tailwind : d.extras.has(value);
-        const advised = value === 'tailwind' || value === 'git' || value === 'vscode';
+        const advised = value === 'tailwind' || value === 'git' || value === 'vscode' || value === 'ai';
         items.push({ value, icon, label, description, detail, picked, advised });
     }
 
@@ -304,9 +304,16 @@ export function extraOptions(d: Draft, git: ToolInfo, gh?: ToolInfo): ExtraOptio
     add(
         'publish',
         'github',
-        'Publish to GitHub',
-        gh?.version ? 'private repository' : 'GitHub CLI will be installed',
-        'Creates a private repository on your GitHub account and uploads the project (needs "gh auth login" once).',
+        'Upload to GitHub',
+        'new repository',
+        'Saves your code online in a new repository on your GitHub account. VS Code asks you to sign in once; nothing to install.',
+    );
+    add(
+        'existing',
+        'repo',
+        'Add to one of my GitHub repositories',
+        'pick it after Create',
+        'Puts the new project inside a repository you already have on GitHub (its history is kept).',
     );
     add(
         'vscode',
@@ -352,6 +359,13 @@ export function extraOptions(d: Draft, git: ToolInfo, gh?: ToolInfo): ExtraOptio
         );
     }
     add(
+        'ai',
+        'sparkle',
+        'AI agent ready',
+        'Claude, Copilot, Cursor…',
+        'Writes AGENTS.md (stack, commands, folder map, where new code goes) plus CLAUDE.md, Copilot instructions and /new-feature, /review and /explain prompts, so AI assistants build things the right way.',
+    );
+    add(
         'license',
         'law',
         'MIT License',
@@ -365,8 +379,9 @@ export function extraOptions(d: Draft, git: ToolInfo, gh?: ToolInfo): ExtraOptio
  * Applies the ticked extras (and Tailwind) to the draft.
  * @param d draft to update
  * @param chosen values that are ticked
+ * @param lastToggled the option just turned on (it wins when two exclude each other)
  */
-export function setExtras(d: Draft, chosen: Iterable<ExtraOption['value']>): void {
+export function setExtras(d: Draft, chosen: Iterable<ExtraOption['value']>, lastToggled?: string): void {
     const set = new Set(chosen);
     d.tailwind = !!d.template?.tailwind && set.has('tailwind');
     d.extras = new Set<Extra>();
@@ -375,8 +390,11 @@ export function setExtras(d: Draft, chosen: Iterable<ExtraOption['value']>): voi
             d.extras.add(value);
         }
     }
-    // * Publishing needs a Git repository.
-    if (d.extras.has('publish')) {
+    // * Only one GitHub destination at a time; both need a Git repository.
+    if (d.extras.has('publish') && d.extras.has('existing')) {
+        d.extras.delete(lastToggled === 'existing' ? 'publish' : 'existing');
+    }
+    if (d.extras.has('publish') || d.extras.has('existing')) {
         d.extras.add('git');
     }
 }

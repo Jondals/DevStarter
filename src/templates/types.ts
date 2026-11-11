@@ -11,7 +11,7 @@ import { PackageManager, ToolId } from '../tools';
 import { Database } from '../scaffold/database';
 import { CiKind } from '../scaffold/extras';
 
-export type Category = 'Frontend' | 'Full-stack' | 'Backend' | 'Mobile' | 'Other';
+export type Category = 'Frontend' | 'Full-stack' | 'Backend' | 'Mobile' | 'Desktop' | 'Other';
 
 /** Everything a template needs to know to create its part of the project. */
 export interface PartOptions {
@@ -63,6 +63,11 @@ export interface Template {
     /** Explanation for beginners. */
     detail: string;
     recommended?: boolean;
+    /**
+     * Popularity rank inside its category (1 = most used, from developer surveys).
+     * The wizard lists templates in this order; templates without one go last.
+     */
+    rank?: number;
     /** Offers a choice between TypeScript and JavaScript. */
     languages?: boolean;
     tailwind?: boolean;

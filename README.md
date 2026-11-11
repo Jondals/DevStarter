@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.0.2-818cf8" alt="version 1.0.2">
   <img src="https://img.shields.io/badge/VS%20Code-%5E1.105-2dd4bf" alt="VS Code ^1.105">
-  <img src="https://img.shields.io/badge/templates-24-e879f9" alt="24 templates">
+  <img src="https://img.shields.io/badge/templates-34-e879f9" alt="34 templates">
   <img src="https://img.shields.io/badge/libraries-54-38bdf8" alt="54 libraries">
 </p>
 
@@ -21,33 +21,33 @@ Pick what you want to build. You can add a backend, a database and popular libra
 
 ## Features
 
-- **Start from an idea.** No need to know what React or Vite are. Pick one of 11 ideas and DevStarter chooses everything for you:
-  - portfolio, landing page with animations, 3D website,
-  - browser game, interactive art, blog,
-  - web app with a database, website with its own API, website with a map,
-  - mobile app, Python automation.
+- **Start from an idea.** No need to know what React or Vite are. Pick one of 20 ideas and DevStarter chooses everything for you:
+  - portfolio, landing page, 3D website, browser game, interactive art, blog,
+  - online store, AI chatbot, web app with a database, dashboard, real-time chat, website with its own API, map,
+  - mobile app, desktop app, browser extension, Discord bot, Python automation, data analysis, an API for your app.
 - **Live demos.** Three.js, React Three Fiber, GSAP, p5.js, Phaser and Leaflet come with a demo page that works right away (`http://localhost:5173/demos/`). Look at its code and copy what you like.
-- **Works on a fresh machine.** Missing Node.js, Git, Python, PHP, Go, .NET, Rust, Java or the GitHub CLI? DevStarter detects it and installs it for you: winget on Windows, Homebrew on macOS, [php.new](https://php.new) for PHP and Composer. It installs pnpm and bun too. Run **Check My Tools** anytime.
-- **Any project.** 24 templates: frontend, full-stack, backend, mobile, scripts or an empty folder.
+- **Works on a fresh machine.** Missing Node.js, Git, Python, PHP, Go, .NET, Rust or Java? DevStarter detects it and installs it for you: winget on Windows (or the official download, without admin rights, where winget does not exist), Homebrew on macOS, [php.new](https://php.new) for PHP and Composer. It installs pnpm and bun too. Run **Check My Tools** anytime.
+- **Any project.** 34 templates, sorted from most to least used: frontend, full-stack, backend, mobile, desktop apps, browser extensions, bots, scripts or an empty folder.
 - **Frontend + backend in one go.** Add any backend to a frontend or mobile app. You get:
   - `frontend/` and `backend/` folders,
   - `/api` requests proxied to the backend,
   - a single `npm run dev` that starts both.
 - **Database integration.** SQLite, PostgreSQL, MySQL or MongoDB. DevStarter installs the driver, writes the connection to `.env`, adds a `/api/db` test route and can add a `docker-compose.yml` to start the database.
-- **54 popular libraries.** Three.js, GSAP, Phaser, Zustand, TanStack Query, Pinia, Zod, Helmet, Django REST Framework, pytest and more. Many are configured in the code automatically, and the test libraries include an example test that already passes.
+- **93 popular libraries.** Three.js, GSAP, Zustand, Redux Toolkit, TanStack Query, Recharts, Pinia, Zod, Prisma, Stripe, Socket.IO, the Claude and OpenAI SDKs, Django REST Framework, pandas, pytest and more. Many are configured in the code automatically, and the test libraries include an example test that already passes.
 - **A terminal you'll enjoy watching.**
   - A spinning arc, shimmering step titles and a progress bar.
   - Tips while you wait (beginners) or live output (experienced).
   - `◆` results with details underneath.
   - Press `v` for full logs and `Ctrl+C` to cancel.
 - **Friendly errors that fix themselves.** When something fails, you see the last lines of output and a 💡 explanation. If a framework needs a newer Node.js, DevStarter offers to update Node.js or to use the newest compatible version of the framework, and retries on its own. There's also a **Retry** button.
-- **Everything is available, with a recommendation.** Beginners see all frameworks and options, and the best choice for them is marked **⭐ Recommended** (and preselected) in every step.
 - **Beginner or experienced mode.**
-  - Beginners get explanations, a welcome page and a `GETTING_STARTED.md` guide.
-  - Experienced developers get a compact wizard, the exact commands and a root `README.md`.
+  - Beginners see a short list (8 ideas, 6 popular technologies) and only choose a name and a folder; every other option waits in **Customize (optional)** with good defaults. They also get explanations, a welcome page and a `GETTING_STARTED.md` guide.
+  - Experienced developers get the full catalog, every option on one screen, the exact commands and a root `README.md`.
+- **GitHub in one click.** Upload the project to a new repository, or add it to one you already have, using the GitHub account built into VS Code. Nothing to install, no `gh auth login`. Existing folders too: **Publish This Folder to GitHub**.
+- **Ready for AI agents.** `AGENTS.md`, `CLAUDE.md` and Copilot instructions describe your stack, commands and where new code goes, plus `/new-feature`, `/review` and `/explain` prompts.
 - **Extras:**
   - Tailwind CSS v4 and Prettier.
-  - Git with a first commit, or publish to a private GitHub repository.
+  - Git with a first commit, a new GitHub repository (private or public) or one of your existing repositories.
   - GitHub Actions CI, Dockerfile and Docker Compose.
   - MIT license, EditorConfig and recommended VS Code extensions.
 - **Always up to date.**
@@ -60,11 +60,12 @@ Pick what you want to build. You can add a backend, a database and popular libra
 
 | Category | Templates | Options |
 | --- | --- | --- |
-| Frontend | React, Vue, Svelte, HTML/CSS/JS (all with Vite), Angular | TypeScript/JavaScript, Tailwind CSS, libraries, **+ any backend** |
-| Full-stack | Next.js, Nuxt, SvelteKit, Astro | Tailwind CSS, database (except Astro), libraries |
-| Backend | Express, NestJS, FastAPI, Flask, Django, Laravel, Go, .NET Web API, Rust (Axum), Spring Boot | Database, Dockerfile, libraries |
+| Frontend | React, Vue, Angular, Svelte, HTML/CSS/JS, Solid, Preact, Lit (Vite) | TypeScript/JavaScript, Tailwind CSS, libraries, **+ any backend** |
+| Full-stack | Next.js, React Router (Remix), Nuxt, Astro, SvelteKit | Tailwind CSS, database, libraries |
+| Backend | Express, .NET Web API, Spring Boot, Django, FastAPI, Flask, Laravel, NestJS, Go, Fastify, Hono, Rust (Axum) | Database, Dockerfile, libraries |
 | Mobile | React Native (Expo), Flutter | Libraries, **+ any backend** |
-| Other | Node.js script, Python script, Empty project | Libraries |
+| Desktop | Electron, Tauri, Browser extension (WXT) | Libraries |
+| Other | Node.js script, Python script, Discord bot, Empty project | Libraries |
 
 Databases: SQLite, PostgreSQL, MySQL and MongoDB (Django and Laravel: SQL databases only).
 Package managers: npm, pnpm or bun.
@@ -114,6 +115,7 @@ Package managers: npm, pnpm or bun.
 | `DevStarter: Recent Projects` | Reopens a project created with DevStarter |
 | `DevStarter: Open Getting Started Guide` | Shows `GETTING_STARTED.md` of the open project |
 | `DevStarter: Change Experience Level` | Switch between beginner and experienced mode |
+| `DevStarter: Publish This Folder to GitHub` | Uploads the open folder to a new or existing GitHub repository (signs in with VS Code) |
 | `DevStarter: Help` | One menu with everything: new project, tools, tour, updates, log and settings |
 
 ## Requirements
@@ -125,7 +127,6 @@ Only **VS Code**. DevStarter offers to install everything else:
 | Node.js 20.19+ | JavaScript templates | winget / Homebrew |
 | pnpm, bun | if you pick them | yes |
 | Git | the Git extra | winget / Homebrew |
-| GitHub CLI | "Publish to GitHub" (run `gh auth login` once) | winget / Homebrew |
 | Python | FastAPI, Flask, Django, Python script | winget / Homebrew |
 | PHP + Composer | Laravel | php.new (all systems) |
 | Go, .NET SDK, Rust, Java 21 | their templates | winget / Homebrew (Rust also via rustup) |
@@ -238,7 +239,8 @@ Frameworks release new versions all the time. DevStarter is built so that this d
 
 | Version | Highlights |
 | --- | --- |
-| **1.0.2** | Better search visibility (also "Dev Starter"), works from VS Code 1.90 (more IDEs), one-click publishing to Microsoft + Open VSX, Workspace Trust |
+| **1.1.0** | Simple beginner mode, technology logos, 34 templates and 93 libraries sorted by popularity, GitHub in one click (new or existing repository), AI agent files, tools installed without winget |
+| 1.0.2 | Better search visibility (also "Dev Starter"), works from VS Code 1.90 (more IDEs), one-click publishing to Microsoft + Open VSX, Workspace Trust |
 | 1.0.0 | First stable release: tool updates that really update (Node.js official installer with checksum), the project starts and opens in your browser, security review, modular code, no duplicated code, packaged `.vsix` |
 | 0.6.1 | Beginners can choose every technology and option, with ⭐ Recommended marked in each step |
 | 0.6.0 | Simpler first screen and plain-language summary for beginners, Help command, DevStarter log, clear error messages everywhere, code review fixes |

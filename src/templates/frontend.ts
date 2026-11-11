@@ -50,11 +50,16 @@ interface ViteTemplateInfo {
     id: string;
     label: string;
     icon: string;
+    /** Short text under the name (what makes it different; "Vite" is shown in the detail). */
+    description: string;
     detail: string;
     recommended?: boolean;
     /** Template name in create-vite (without the -ts suffix). */
     vite: string;
-    welcome: WelcomeFramework;
+    /** Popularity rank (1 = most used); the wizard lists templates in this order. */
+    rank: number;
+    /** Beginner welcome page; frameworks without one keep the generator's page. */
+    welcome?: WelcomeFramework;
     /** Main stylesheet. */
     css: string;
     mainFiles: (ts: boolean) => string[];
@@ -114,10 +119,10 @@ function vitePlan(t: ViteTemplateInfo, o: PartOptions): Plan {
         steps.push(backendLinkStep(o, configureViteProxy));
     }
     // ? The welcome page uses Tailwind, so it only makes sense with Tailwind.
-    if (o.tailwind && o.beginner) {
+    if (o.tailwind && o.beginner && t.welcome) {
         steps.push(
             task('Adding a welcome page', function () {
-                writeWelcomePage(o.dir, t.welcome, o.name, o.typescript, !!o.backendUrl);
+                writeWelcomePage(o.dir, t.welcome!, o.name, o.typescript, !!o.backendUrl);
             }),
         );
     }
@@ -149,9 +154,10 @@ function viteTemplate(t: ViteTemplateInfo): Template {
         label: t.label,
         icon: t.icon,
         category: 'Frontend',
-        description: 'Vite',
-        detail: t.detail,
+        description: t.description,
+        detail: `${t.detail} Runs on Vite, the fast dev server.`,
         recommended: t.recommended,
+        rank: t.rank,
         languages: true,
         tailwind: true,
         acceptsBackend: true,
@@ -244,14 +250,74 @@ function vanillaMain(ts: boolean): string[] {
 const tailwindExt = 'bradlc.vscode-tailwindcss';
 const eslintExt = 'dbaeumer.vscode-eslint';
 
+/** Main files of a Solid project. */
+function solidMain(ts: boolean): string[] {
+    return [`src/App.${ts ? 'tsx' : 'jsx'}`, `src/index.${ts ? 'tsx' : 'jsx'}`];
+}
+
+/** Main files of a Preact project. */
+function preactMain(ts: boolean): string[] {
+    return [`src/app.${ts ? 'tsx' : 'jsx'}`, `src/main.${ts ? 'tsx' : 'jsx'}`];
+}
+
+/** Main files of a Lit project. */
+function litMain(ts: boolean): string[] {
+    return [`src/my-element.${ts ? 'ts' : 'js'}`, 'index.html'];
+}
+
+/** Less common Vite frameworks, after the big ones. */
+const moreViteTemplates: Template[] = [
+    viteTemplate({
+        id: 'solid',
+        label: 'Solid',
+        icon: 'zap',
+        description: 'Reactive · very fast',
+        detail: 'Looks like React, but updates only what changes. Great performance with little code.',
+        vite: 'solid',
+        rank: 6,
+        css: 'src/index.css',
+        mainFiles: solidMain,
+        docs: 'https://docs.solidjs.com',
+        vscode: [tailwindExt],
+    }),
+    viteTemplate({
+        id: 'preact',
+        label: 'Preact',
+        icon: 'symbol-event',
+        description: 'React in 3 kB',
+        detail: 'The same ideas as React in a tiny package. Perfect for small, fast websites.',
+        vite: 'preact',
+        rank: 7,
+        css: 'src/index.css',
+        mainFiles: preactMain,
+        docs: 'https://preactjs.com/guide/v10/getting-started',
+        vscode: [tailwindExt],
+    }),
+    viteTemplate({
+        id: 'lit',
+        label: 'Lit',
+        icon: 'symbol-namespace',
+        description: 'Web Components',
+        detail: 'Reusable custom HTML elements that work in any page or framework. Made by Google.',
+        vite: 'lit',
+        rank: 8,
+        css: 'src/index.css',
+        mainFiles: litMain,
+        docs: 'https://lit.dev/docs/',
+        vscode: ['runem.lit-plugin', tailwindExt],
+    }),
+];
+
 export const frontendTemplates: Template[] = [
     viteTemplate({
         id: 'react',
         label: 'React',
         icon: 'symbol-event',
+        description: 'Components · the most used',
         recommended: true,
         detail: 'The most popular library for building web interfaces. A great first choice.',
         vite: 'react',
+        rank: 1,
         welcome: 'react',
         css: 'src/index.css',
         mainFiles: reactMain,
@@ -262,8 +328,10 @@ export const frontendTemplates: Template[] = [
         id: 'vue',
         label: 'Vue',
         icon: 'symbol-color',
+        description: 'Templates · easy to learn',
         detail: 'Approachable and versatile. HTML-like templates that feel familiar.',
         vite: 'vue',
+        rank: 2,
         welcome: 'vue',
         css: 'src/style.css',
         mainFiles: vueMain,
@@ -274,8 +342,10 @@ export const frontendTemplates: Template[] = [
         id: 'svelte',
         label: 'Svelte',
         icon: 'flame',
+        description: 'Compiled · tiny and fast',
         detail: 'Write less code. Compiles to tiny, fast JavaScript.',
         vite: 'svelte',
+        rank: 4,
         welcome: 'svelte',
         css: 'src/app.css',
         mainFiles: svelteMain,
@@ -286,8 +356,10 @@ export const frontendTemplates: Template[] = [
         id: 'vanilla',
         label: 'HTML, CSS & JavaScript',
         icon: 'code',
+        description: 'No framework · the basics',
         detail: 'No framework. Perfect to learn the fundamentals with a modern dev server.',
         vite: 'vanilla',
+        rank: 5,
         welcome: 'vanilla',
         css: 'src/style.css',
         mainFiles: vanillaMain,
@@ -299,7 +371,8 @@ export const frontendTemplates: Template[] = [
         label: 'Angular',
         icon: 'shield',
         category: 'Frontend',
-        description: 'Angular CLI',
+        description: 'Full framework · by Google',
+        rank: 3,
         detail: 'A complete framework by Google with everything included. Uses TypeScript.',
         tailwind: true,
         acceptsBackend: true,
@@ -311,4 +384,5 @@ export const frontendTemplates: Template[] = [
         vscode: ['Angular.ng-template', tailwindExt],
         plan: angularPlan,
     },
+    ...moreViteTemplates,
 ];

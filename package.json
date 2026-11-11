@@ -7,7 +7,7 @@
     "color": "#1e1b4b",
     "theme": "dark"
   },
-  "version": "1.0.2",
+  "version": "1.1.0",
   "publisher": "Jondals",
   "repository": {
     "type": "git",
@@ -104,6 +104,12 @@
         "title": "Change Experience Level",
         "category": "DevStarter",
         "icon": "$(account)"
+      },
+      {
+        "command": "devstarter.publishToGithub",
+        "title": "Publish This Folder to GitHub",
+        "category": "DevStarter",
+        "icon": "$(github)"
       },
       {
         "command": "devstarter.help",

@@ -30,9 +30,12 @@ import {
     writeRootReadme,
     writeVscodeRecommendations,
 } from './scaffold/extras';
+import { AgentPart, writeAgentFiles } from './scaffold/agents';
+import { ensureCommitIdentity, GithubTarget, publishToGithub } from './github';
 
 /** Extras that can be ticked in the wizard. */
-export type Extra = 'git' | 'publish' | 'ci' | 'license' | 'compose' | 'dockerfile' | 'prettier' | 'vscode';
+export type Extra =
+    'git' | 'publish' | 'existing' | 'ci' | 'license' | 'compose' | 'dockerfile' | 'prettier' | 'vscode' | 'ai';
 
 /** What the wizard returns. */
 export interface ProjectChoice {
@@ -49,6 +52,8 @@ export interface ProjectChoice {
     name: string;
     parentDir: string;
     beginner: boolean;
+    /** GitHub account and destination ("publish" / "existing"), resolved before the build. */
+    github?: GithubTarget;
 }
 
 /** The complete plan of the project. */
@@ -93,11 +98,9 @@ export function usesNode(choice: Parts): boolean {
  */
 export function requiredTools(choice: ProjectChoice): ToolId[] {
     const tools = new Set<ToolId>([...choice.template.requires, ...(choice.backend?.requires ?? [])]);
-    if (choice.extras.includes('git') || choice.extras.includes('publish')) {
+    // ? Publishing uses the GitHub account built into VS Code: only Git is needed.
+    if (choice.extras.includes('git') || choice.extras.includes('publish') || choice.extras.includes('existing')) {
         tools.add('git');
-    }
-    if (choice.extras.includes('publish')) {
-        tools.add('gh');
     }
     const list = [...tools];
     list.sort(nodeFirst);
@@ -138,8 +141,10 @@ export function describe(choice: Omit<ProjectChoice, 'name' | 'parentDir' | 'beg
         ['dockerfile', 'Dockerfile'],
         ['prettier', 'Prettier'],
         ['ci', 'CI'],
+        ['ai', 'AI agents'],
         ['git', 'Git'],
         ['publish', 'GitHub'],
+        ['existing', 'GitHub'],
     ];
     for (const [extra, label] of extraNames) {
         if (choice.extras.includes(extra) && (extra !== 'compose' || needsServer(choice.database))) {
@@ -158,6 +163,7 @@ const plainNouns: Record<Template['category'], string> = {
     'Full-stack': 'a web app',
     Backend: 'a server (API)',
     Mobile: 'a mobile app',
+    Desktop: 'a desktop app',
     Other: 'a project',
 };
 
@@ -365,8 +371,64 @@ export function buildProject(choice: ProjectChoice, python?: string): BuiltProje
         );
     }
 
+    if (extras.has('ai')) {
+        steps.push(agentStep(choice, guideContext));
+    }
+
     steps.push(...gitSteps(choice, root, front, back));
     return { root, steps, servers, devAll, mainFiles };
+}
+
+/**
+ * Step that writes AGENTS.md and friends (runs last, so the folder map shows the real files).
+ * @param choice the wizard's choice
+ * @param ctx data computed while building the project
+ */
+function agentStep(choice: ProjectChoice, ctx: GuideContext): Step {
+    return task(
+        'Preparing the project for AI agents',
+        function (log) {
+            const guide = buildGuideInfo(choice, ctx);
+            const parts: AgentPart[] = [];
+            const front = path.relative(ctx.root, ctx.frontDir);
+            const frontLabel = choice.template.category === 'Mobile' ? 'Mobile app' : 'Frontend';
+            parts.push({
+                label: choice.backend ? frontLabel : choice.template.label,
+                folder: front,
+                templateId: choice.template.id,
+                templateLabel: choice.template.label,
+                docs: choice.template.docs,
+            });
+            if (choice.backend) {
+                parts.push({
+                    label: 'Backend',
+                    folder: 'backend',
+                    templateId: choice.backend.id,
+                    templateLabel: choice.backend.label,
+                    docs: choice.backend.docs,
+                });
+            }
+            const written = writeAgentFiles(ctx.root, {
+                name: choice.name,
+                stack: guide.stack,
+                typescript: choice.typescript && !!choice.template.languages,
+                beginner: choice.beginner,
+                pm: choice.pm,
+                parts,
+                servers: ctx.servers,
+                devAll: ctx.devAll,
+                database: databaseOwner(choice) ? choice.database : undefined,
+                libraries: ctx.libraries.map(function (l) {
+                    return l.label;
+                }),
+                notes: guide.notes,
+            });
+            log(
+                `${written.length} files: AGENTS.md, CLAUDE.md, Copilot instructions and /new-feature, /review, /explain prompts`,
+            );
+        },
+        true,
+    );
 }
 
 /** Data the extras steps need. */
@@ -551,9 +613,11 @@ function buildGuideInfo(choice: ProjectChoice, ctx: GuideContext): GuideInfo {
         ['prettier', 'Prettier code formatter (`format` script)'],
         ['ci', 'GitHub Actions workflow (`.github/workflows/ci.yml`)'],
         ['license', 'MIT license'],
+        ['ai', 'AI agent instructions (`AGENTS.md`, `CLAUDE.md`, Copilot) and reusable prompts'],
         ['vscode', 'Recommended VS Code extensions'],
         ['git', 'A Git repository with a first commit'],
-        ['publish', 'A private GitHub repository'],
+        ['publish', 'A GitHub repository with your code'],
+        ['existing', 'Your code added to your GitHub repository'],
     ];
     for (const [extra, text] of extraTexts) {
         if (extras.has(extra) && (extra !== 'compose' || needsServer(choice.database))) {
@@ -599,7 +663,8 @@ function buildGuideInfo(choice: ProjectChoice, ctx: GuideContext): GuideInfo {
  */
 function gitSteps(choice: ProjectChoice, root: string, front: PartOptions, back?: PartOptions): Step[] {
     const extras = new Set(choice.extras);
-    if (!extras.has('git') && !extras.has('publish')) {
+    const github = extras.has('publish') || extras.has('existing');
+    if (!extras.has('git') && !github) {
         return [];
     }
     const parts = back ? [front.dir, back.dir] : [root];
@@ -626,16 +691,31 @@ function gitSteps(choice: ProjectChoice, root: string, front: PartOptions, back?
             true,
         ),
         cmd('Creating Git repository', 'git init -q && git add -A', root, true),
+        // * With GitHub, commits get the GitHub account as author if Git has none configured yet.
+        ...(choice.github
+            ? [
+                  task(
+                      'Setting the commit author',
+                      async function () {
+                          await ensureCommitIdentity(root, choice.github!);
+                      },
+                      true,
+                  ),
+              ]
+            : []),
         // ! Separate step: the commit fails when Git has no user.name/user.email yet, but the
         // ! repository above must still exist (the person can commit later).
         cmd('Saving the first commit', 'git commit -q -m "Initial commit from DevStarter"', root, true),
     ];
-    if (extras.has('publish')) {
+    if (github && choice.github) {
+        const target = choice.github;
         steps.push(
-            cmd(
-                'Publishing to GitHub (private repository)',
-                `gh repo create ${choice.name} --private --source . --remote origin --push`,
-                root,
+            task(
+                target.existing ? `Adding to ${target.existing.fullName} on GitHub` : 'Publishing to GitHub',
+                async function (log) {
+                    const url = await publishToGithub(root, choice.name, target, log);
+                    log(url);
+                },
                 true,
             ),
         );
