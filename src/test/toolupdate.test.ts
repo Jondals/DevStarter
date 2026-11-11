@@ -69,6 +69,10 @@ suite('DevStarter · tool updates', function () {
     });
 
     test('when winget has nothing newer, the reason is explained (and the code is not an error)', async function () {
+        // ! winget only exists on Windows, and other systems cut exit codes to 0-255 (2316632107 -> 43).
+        if (process.platform !== 'win32') {
+            this.skip();
+        }
         this.timeout(30000);
         const { text } = await runUpdate(
             fakeTool(['1.0.0'], { installer: { title: 'Updating FakeTool', command: exitWith(wingetCodes.noUpdate) } }),

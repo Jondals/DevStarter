@@ -40,7 +40,9 @@ import {
 
 /** Normalized path for comparisons (Windows paths ignore case and slash direction). */
 function normalizeOpened(item: { folder: string; newWindow: boolean }): { folder: string; newWindow: boolean } {
-    return { folder: vscode.Uri.file(item.folder).fsPath.toLowerCase(), newWindow: item.newWindow };
+    // ? Same comparison on every OS (Linux turns "C:\\p" into "c:/p").
+    const folder = vscode.Uri.file(item.folder).fsPath.replace(/\\/g, '/').toLowerCase();
+    return { folder, newWindow: item.newWindow };
 }
 
 /**
@@ -450,7 +452,10 @@ suite('DevStarter · click by click', function () {
         ]);
         // ...and the new window already knows it must not start them again.
         assert.strictEqual(saved?.serversStarted, true);
-        assert.deepStrictEqual(opened, [{ folder: 'C:\\p', newWindow: true }].map(normalizeOpened));
+        assert.deepStrictEqual(
+            opened.map(normalizeOpened),
+            [{ folder: 'C:\\p', newWindow: true }].map(normalizeOpened),
+        );
     });
 
     test('with no folder open, opening the project reloads the window, so the servers start after the reload', async function () {
@@ -458,7 +463,10 @@ suite('DevStarter · click by click', function () {
         const { terminals, saved, opened } = await runAfterCreate(false);
         assert.deepStrictEqual(terminals, [], 'terminals would be lost on reload');
         assert.notStrictEqual(saved?.serversStarted, true);
-        assert.deepStrictEqual(opened, [{ folder: 'C:\\p', newWindow: false }].map(normalizeOpened));
+        assert.deepStrictEqual(
+            opened.map(normalizeOpened),
+            [{ folder: 'C:\\p', newWindow: false }].map(normalizeOpened),
+        );
     });
 
     test('a busy port is detected (and a free one is not)', async function () {
